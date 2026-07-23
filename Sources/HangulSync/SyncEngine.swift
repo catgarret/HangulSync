@@ -6,11 +6,12 @@ import Network
 /// 동기화 메시지 (newline-delimited JSON)
 struct SyncMessage: Codable {
     var origin: String        // 보낸 인스턴스 UUID (자기 메시지 무시용)
-    var kind: String?         // nil/"input" | "session" | "pair"
+    var kind: String?         // nil/"input" | "session" | "pair" | "hello"
     var sourceID: String?     // input: 입력 소스 ID
     var isKorean: Bool?       // input: 한국어 여부 (폴백 매칭용)
     var sessionActive: Bool?  // session: 원격 세션 활성 여부
     var relayKey: String?     // pair: 릴레이 페어링 키 (직접 연결로만 전송)
+    var name: String?         // hello: 사람이 읽는 컴퓨터 이름
 }
 
 /// 입력 소스 변경 감지 → 피어 전파, 피어 메시지 수신 → 로컬 적용.
@@ -57,8 +58,13 @@ final class SyncEngine {
     private var lastKnownID: String?
     private var remoteActive: [String: Date] = [:]  // origin → 마지막 세션 신호 시각
     private var lastSessionBroadcast = Date.distantPast
+    private var namesByOrigin: [String: String] = [:]
     private(set) var localViewerActive = false
     private(set) var readyPeerCount = 0
+    /// 설정 창에 보여줄 피어 목록: (컴퓨터 이름, 연결 경로)
+    private(set) var peerInfo: [(name: String, via: String)] = []
+
+    let hostName = Host.current().localizedName ?? "Mac"
 
     var enabled = true { didSet { onStateChange?() } }
 
@@ -129,17 +135,23 @@ final class SyncEngine {
     }
 
     // MARK: - 원격 데스크탑 뷰어 감지 (세션 게이트)
+    // "뷰어 앱이 실행 중이면 원격 세션 중"으로 판정한다.
+    // (frontmost 기준은 다른 앱만 잠깐 클릭해도 대기로 빠져 UX가 나쁘다)
 
     private func observeViewerApps() {
-        NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] note in
-            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            self?.setLocalViewer(active: Self.isViewer(app))
+        let nc = NSWorkspace.shared.notificationCenter
+        for event in [NSWorkspace.didLaunchApplicationNotification,
+                      NSWorkspace.didTerminateApplicationNotification] {
+            nc.addObserver(forName: event, object: nil, queue: .main) { [weak self] _ in
+                self?.updateViewerState()
+            }
         }
-        setLocalViewer(active: Self.isViewer(NSWorkspace.shared.frontmostApplication))
+        updateViewerState()
+    }
+
+    private func updateViewerState() {
+        let running = NSWorkspace.shared.runningApplications.contains { Self.isViewer($0) }
+        setLocalViewer(active: running)
     }
 
     private static func isViewer(_ app: NSRunningApplication?) -> Bool {
@@ -199,6 +211,11 @@ final class SyncEngine {
         if key != "relay" { originByKey[key] = msg.origin }
 
         switch msg.kind {
+        case "hello":
+            DispatchQueue.main.async {
+                self.namesByOrigin[msg.origin] = msg.name ?? "Mac"
+            }
+            recountPeers()
         case "session":
             let active = msg.sessionActive == true
             DispatchQueue.main.async {
@@ -251,12 +268,26 @@ final class SyncEngine {
         send(pairKey: merged) // 상대도 같은 키로 수렴하도록 재전송
     }
 
+    // MARK: - 네트워크 파라미터 (저지연 튜닝)
+
+    /// TCP_NODELAY(Nagle 비활성)로 소형 메시지를 즉시 전송 — 체감 지연의 핵심 해결책
+    private static func tunedTCPParams() -> NWParameters {
+        let tcp = NWProtocolTCP.Options()
+        tcp.noDelay = true            // 패킷 모아 보내기 비활성 → 즉시 전송
+        tcp.enableKeepalive = true    // 끊긴 연결 조기 감지
+        tcp.keepaliveIdle = 30
+        tcp.connectionTimeout = 5
+        let params = NWParameters(tls: nil, tcp: tcp)
+        params.serviceClass = .responsiveData // 응답성 우선 QoS
+        params.includePeerToPeer = true
+        params.allowLocalEndpointReuse = true
+        return params
+    }
+
     // MARK: - 리스너 (수신 대기 + Bonjour 광고)
 
     private func startListener() {
-        let params = NWParameters.tcp
-        params.allowLocalEndpointReuse = true
-        params.includePeerToPeer = true
+        let params = Self.tunedTCPParams()
         do {
             let l = try NWListener(using: params, on: NWEndpoint.Port(rawValue: Self.port)!)
             l.service = NWListener.Service(name: serviceName, type: Self.serviceType)
@@ -295,7 +326,7 @@ final class SyncEngine {
             guard name != serviceName else { continue } // 자기 자신 제외
             let key = "bonjour-\(name)"
             if connections[key] == nil {
-                let conn = NWConnection(to: result.endpoint, using: .tcp)
+                let conn = NWConnection(to: result.endpoint, using: Self.tunedTCPParams())
                 adopt(conn, key: key)
             }
         }
@@ -306,6 +337,7 @@ final class SyncEngine {
     private func startTimer() {
         let tick: () -> Void = { [weak self] in
             guard let self else { return }
+            self.updateViewerState() // 뷰어 실행 상태 안전망 재확인
             self.pollTailscale()
             self.netQueue.async { self.connectBonjourPeers() }
             // 세션 신호 유지 재전송
@@ -343,7 +375,7 @@ final class SyncEngine {
                     let conn = NWConnection(
                         host: NWEndpoint.Host(ip),
                         port: NWEndpoint.Port(rawValue: Self.port)!,
-                        using: .tcp
+                        using: Self.tunedTCPParams()
                     )
                     self.adopt(conn, key: key)
                 }
@@ -388,6 +420,8 @@ final class SyncEngine {
             case .ready:
                 self.recountPeers()
                 DispatchQueue.main.async {
+                    // 이름 소개 (피어 목록·고유 카운트용)
+                    self.push(SyncMessage(origin: self.instanceID, kind: "hello", name: self.hostName), viaRelay: false)
                     // 릴레이 키 합의·공유 (직접 연결이 생겼을 때)
                     self.ensureRelayKeyAndShare()
                     // 내가 원격 세션 중이면 새 피어에게 즉시 알림 + 상태 정렬
@@ -421,13 +455,31 @@ final class SyncEngine {
         conn.start(queue: netQueue)
     }
 
+    /// 연결 개수가 아니라 "고유한 Mac" 기준으로 집계
+    /// (두 맥이 서로 동시에 연결 + Tailscale 경로가 겹치면 연결은 2~4개가 되므로)
     private func recountPeers() {
         netQueue.async {
-            let count = self.connections.values.filter {
-                if case .ready = $0.state { return true } else { return false }
-            }.count
+            var keyByOrigin: [String: String] = [:] // origin → 대표 연결 key
+            for (key, conn) in self.connections {
+                guard case .ready = conn.state else { continue }
+                guard let origin = self.originByKey[key] else { continue }
+                // 경로 우선순위: 같은 네트워크 > Tailscale > 수신
+                if let existing = keyByOrigin[origin] {
+                    let rank: (String) -> Int = { $0.hasPrefix("bonjour") ? 0 : $0.hasPrefix("ts-") ? 1 : 2 }
+                    if rank(key) < rank(existing) { keyByOrigin[origin] = key }
+                } else {
+                    keyByOrigin[origin] = key
+                }
+            }
             DispatchQueue.main.async {
-                self.readyPeerCount = count
+                self.readyPeerCount = keyByOrigin.count
+                self.peerInfo = keyByOrigin.map { origin, key in
+                    let name = self.namesByOrigin[origin] ?? "Mac"
+                    let via: L10n.Key = key.hasPrefix("bonjour") ? .viaLocalNetwork
+                        : key.hasPrefix("ts-") ? .viaTailscale
+                        : .viaIncoming
+                    return (name, L10n.t(via))
+                }.sorted { $0.name < $1.name }
                 self.onStateChange?()
             }
         }
