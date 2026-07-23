@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#48484E"/>
+      <stop offset="1" stop-color="#0B0B0D"/>
+    </linearGradient>
+    <linearGradient id="glyph" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1A1A1C"/>
+      <stop offset="1" stop-color="#3F3F46"/>
+    </linearGradient>
+  </defs>
+
+  <!-- squircle background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="url(#bg)"/>
+
+  <!-- sync arrows (circular) -->
+  <g stroke="#FFFFFF" stroke-width="36" fill="none" stroke-linecap="round" opacity="0.95">
+    <path d="M 573 165 A 352 352 0 0 1 831 363"/>
+    <path d="M 451 859 A 352 352 0 0 1 193 661"/>
+  </g>
+  <g fill="#FFFFFF" opacity="0.95">
+    <polygon points="867,440 876,342 786,384"/>
+    <polygon points="157,584 148,682 238,640"/>
+  </g>
+
+  <!-- back tile: 한 (glass) -->
+  <rect x="158" y="158" width="416" height="416" rx="100" fill="#FFFFFF" fill-opacity="0.22" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="5"/>
+  <text x="366" y="462" text-anchor="middle" font-family="Noto Sans CJK KR" font-weight="bold" font-size="270" fill="#FFFFFF">한</text>
+
+  <!-- front tile: A (solid, layered soft shadow) -->
+  <rect x="450" y="474" width="416" height="416" rx="100" fill="#000000" fill-opacity="0.10"/>
+  <rect x="450" y="462" width="416" height="416" rx="100" fill="#000000" fill-opacity="0.10"/>
+  <rect x="450" y="450" width="416" height="416" rx="100" fill="#FFFFFF"/>
+  <text x="658" y="756" text-anchor="middle" font-family="Noto Sans CJK KR" font-weight="bold" font-size="290" fill="url(#glyph)">A</text>
+</svg>

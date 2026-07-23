@@ -1,0 +1,11 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#000000" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M 16.8 4.1 A 14 14 0 0 1 29.5 26.0"/>
+    <path d="M 19.2 31.9 A 14 14 0 0 1 6.5 10.0"/>
+  </g>
+  <g fill="#000000">
+    <polygon points="26.6,30.1 32.1,27.8 26.9,24.2"/>
+    <polygon points="9.4,5.9 3.9,8.2 9.1,11.8"/>
+  </g>
+  <text x="18" y="23" text-anchor="middle" font-family="Noto Sans CJK KR" font-weight="bold" font-size="13.5" fill="#000000">한</text>
+</svg>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.local.hangulsync</string>
+    <key>CFBundleName</key>
+    <string>HangulSync</string>
+    <key>CFBundleDisplayName</key>
+    <string>HangulSync</string>
+    <key>CFBundleExecutable</key>
+    <string>HangulSync</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>같은 네트워크에 있는 다른 Mac의 HangulSync와 한/영 입력 상태를 동기화하기 위해 로컬 네트워크 접근이 필요합니다.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_hangulsync._tcp</string>
+    </array>
+</dict>
+</plist>
