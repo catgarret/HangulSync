@@ -1,32 +1,59 @@
 import AppKit
 import ServiceManagement
 
+/// 라운드 카드 — 테두리 없이 은은한 채움색 (라이트/다크 자동 적응)
+final class CardView: NSView {
+    init(content: NSView) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: topAnchor),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("unused") }
+
+    override func updateLayer() {
+        layer?.cornerRadius = 12
+        layer?.backgroundColor = NSColor.labelColor.withAlphaComponent(0.055).cgColor
+    }
+}
+
 /// UX 구조
 /// - 첫 실행: Dock에 표시 + 설정 창 자동 오픈
 /// - Dock 아이콘 클릭 → 설정 창 / 메뉴바 아이콘 → 빠른 제어
-/// - 설정 창: 상태 카드 + 옵션 카드(토글 스위치) — 시스템 설정 스타일
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
 
     private var statusItem: NSStatusItem!
     private let engine = SyncEngine()
+    private let updateChecker = UpdateChecker()
 
     // MARK: 메뉴바 메뉴 (빠른 제어만)
     private let peerItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let toggleItem = NSMenuItem(title: "", action: #selector(toggleSync), keyEquivalent: "")
     private let settingsItem = NSMenuItem(title: "", action: #selector(showSettings), keyEquivalent: ",")
+    private let updateItem = NSMenuItem(title: "", action: #selector(openUpdate), keyEquivalent: "")
+    private var updateButton: NSButton?
 
     // MARK: 설정 창
     private var settingsWindow: NSWindow?
     private var settingsStack: NSStackView?
     private let statusDot = NSTextField(labelWithString: "●")
-    private let statusText = NSTextField(wrappingLabelWithString: "")
-    private let peersText = NSTextField(labelWithString: "")
-    private var peersStack: NSStackView?
+    private let statusText = NSTextField(labelWithString: "")
+    private let statusSub = NSTextField(wrappingLabelWithString: "")
+    private var peersSection: NSStackView?
     private lazy var loginSwitch = makeSwitch(#selector(toggleLogin))
     private lazy var remoteOnlySwitch = makeSwitch(#selector(toggleRemoteOnly))
     private lazy var dockSwitch = makeSwitch(#selector(toggleDock))
 
     private let contentWidth: CGFloat = 360
+    private let cardPadding: CGFloat = 16
 
     /// Dock 아이콘 표시 여부 (기본: 표시)
     private var showInDock: Bool {
@@ -52,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.async { self?.refresh() }
         }
         engine.start()
+        updateChecker.onUpdateFound = { [weak self] in self?.refresh() }
+        updateChecker.start()
         refresh()
 
         if !UserDefaults.standard.bool(forKey: "HasLaunchedBefore") {
@@ -67,16 +96,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
+    /// 창을 닫으면 창·뷰 계층을 통째로 해제해 메모리 반환 (다시 열면 재생성)
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === settingsWindow else { return }
+        settingsWindow = nil
+        settingsStack = nil
+        peersSection = nil
+        updateButton = nil
+    }
+
     private func buildMenu() {
         let menu = NSMenu()
         menu.delegate = self
         peerItem.isEnabled = false
         toggleItem.target = self
         settingsItem.target = self
+        updateItem.target = self
+        updateItem.isHidden = true
         menu.addItem(peerItem)
         menu.addItem(.separator())
         menu.addItem(toggleItem)
         menu.addItem(settingsItem)
+        menu.addItem(updateItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: L10n.t(.quit), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -86,11 +127,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refresh()
     }
 
-    // MARK: - 설정 창 (시스템 설정 스타일)
+    // MARK: - 설정 창
 
     @objc private func showSettings() {
-        if settingsWindow == nil { buildSettingsWindow() }
-        refresh()
+        let firstBuild = settingsWindow == nil
+        if firstBuild { buildSettingsWindow() }
+        refresh() // 텍스트 채운 뒤 높이 재계산까지 수행됨
+        if firstBuild { settingsWindow?.center() } // 최종 크기로 화면 중앙 배치
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
@@ -102,37 +145,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return s
     }
 
-    /// 라운드 카드 (시스템 설정의 그룹 박스 느낌)
-    private func card(_ inner: NSView) -> NSBox {
-        let box = NSBox()
-        box.boxType = .custom
-        box.cornerRadius = 10
-        box.borderWidth = 1
-        box.borderColor = NSColor.separatorColor.withAlphaComponent(0.5)
-        box.fillColor = .controlBackgroundColor
-        box.contentViewMargins = .zero
-        box.contentView = inner
-        box.translatesAutoresizingMaskIntoConstraints = false
-        box.widthAnchor.constraint(equalToConstant: contentWidth).isActive = true
-        if let content = box.contentView {
-            inner.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                inner.topAnchor.constraint(equalTo: content.topAnchor),
-                inner.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-                inner.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-                inner.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            ])
+    /// 세로 스택 → 카드.
+    /// 패딩 규칙(고정): 카드 상하 14 · 좌우 16(행이 자체 보유) · 행 간격 = gap
+    private func makeCard(_ rows: [NSView], gap: CGFloat = 14) -> CardView {
+        let inner = NSStackView(views: rows)
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = gap
+        inner.edgeInsets = NSEdgeInsets(top: 14, left: 0, bottom: 14, right: 0)
+        for row in rows {
+            row.translatesAutoresizingMaskIntoConstraints = false
+            row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
         }
-        return box
+        let card = CardView(content: inner)
+        card.widthAnchor.constraint(equalToConstant: contentWidth).isActive = true
+        return card
     }
 
-    private func hairline() -> NSBox {
-        let box = NSBox()
-        box.boxType = .separator
-        return box
-    }
-
-    /// 옵션 행: 제목(+부제) 왼쪽, 토글 스위치 오른쪽
+    /// 옵션 행: 텍스트는 왼쪽 끝, 스위치는 오른쪽 끝 (gravity 고정)
     private func settingRow(title: String, subtitle: String? = nil, control: NSView) -> NSStackView {
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 13)
@@ -141,34 +171,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let sub = NSTextField(wrappingLabelWithString: subtitle)
             sub.font = .systemFont(ofSize: 11)
             sub.textColor = .secondaryLabelColor
-            sub.preferredMaxLayoutWidth = contentWidth - 100
+            sub.preferredMaxLayoutWidth = contentWidth - cardPadding * 2 - 66 // 스위치 영역 제외 가용 폭 전부 사용
             texts.append(sub)
         }
         let textStack = NSStackView(views: texts)
         textStack.orientation = .vertical
         textStack.alignment = .leading
         textStack.spacing = 2
-        textStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let row = NSStackView(views: [textStack, control])
+        let row = NSStackView()
         row.orientation = .horizontal
         row.alignment = .centerY
-        row.spacing = 8
-        row.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        row.spacing = 12
+        row.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
+        row.addView(textStack, in: .leading)
+        row.addView(control, in: .trailing)
         return row
     }
 
     private func buildSettingsWindow() {
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: contentWidth + 40, height: 100),
-            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: contentWidth + 48, height: 400),
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false
         )
         win.title = "HangulSync"
-        win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
+        win.titleVisibility = .hidden
         win.isMovableByWindowBackground = true
         win.isReleasedWhenClosed = false
+        win.delegate = self
 
         // 헤더: 아이콘 + 이름 + 한 줄 설명
         let iconView = NSImageView()
@@ -178,11 +210,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         iconView.heightAnchor.constraint(equalToConstant: 56).isActive = true
 
         let titleLabel = NSTextField(labelWithString: "HangulSync")
-        titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         let tagline = NSTextField(wrappingLabelWithString: L10n.t(.tagline))
-        tagline.font = .systemFont(ofSize: 12)
+        tagline.font = .systemFont(ofSize: 11.5)
         tagline.textColor = .secondaryLabelColor
-        tagline.preferredMaxLayoutWidth = contentWidth - 70
+        tagline.preferredMaxLayoutWidth = contentWidth - 70 // 아이콘·간격 제외 가용 폭
 
         let titleStack = NSStackView(views: [titleLabel, tagline])
         titleStack.orientation = .vertical
@@ -192,88 +224,97 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let header = NSStackView(views: [iconView, titleStack])
         header.orientation = .horizontal
         header.alignment = .centerY
-        header.spacing = 12
+        header.spacing = 14
         header.translatesAutoresizingMaskIntoConstraints = false
         header.widthAnchor.constraint(equalToConstant: contentWidth).isActive = true
 
-        // 상태 카드
-        statusDot.font = .systemFont(ofSize: 10)
-        statusText.font = .systemFont(ofSize: 13, weight: .medium)
-        statusText.preferredMaxLayoutWidth = contentWidth - 60
-        let statusRow = NSStackView(views: [statusDot, statusText])
+        // 상태 카드: ● 제목 (굵게) / 아랫줄 설명 (회색) + (연결 시) 피어 목록
+        statusDot.font = .systemFont(ofSize: 9)
+        statusText.font = .systemFont(ofSize: 13, weight: .semibold)
+        statusSub.font = .systemFont(ofSize: 12)
+        statusSub.textColor = .secondaryLabelColor
+        statusSub.preferredMaxLayoutWidth = contentWidth - cardPadding * 2 - 17
+
+        let statusTexts = NSStackView(views: [statusText, statusSub])
+        statusTexts.orientation = .vertical
+        statusTexts.alignment = .leading
+        statusTexts.spacing = 3
+
+        let statusRow = NSStackView()
         statusRow.orientation = .horizontal
         statusRow.alignment = .firstBaseline
-        statusRow.spacing = 7
-        statusRow.edgeInsets = NSEdgeInsets(top: 12, left: 14, bottom: 10, right: 14)
-
-        peersText.font = .systemFont(ofSize: 11, weight: .semibold)
-        peersText.textColor = .secondaryLabelColor
-        let peersHeader = NSStackView(views: [peersText])
-        peersHeader.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 0, right: 14)
+        statusRow.spacing = 8
+        statusRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
+        statusRow.addView(statusDot, in: .leading)
+        statusRow.addView(statusTexts, in: .leading)
 
         let peers = NSStackView(views: [])
         peers.orientation = .vertical
         peers.alignment = .leading
-        peers.spacing = 6
-        peers.edgeInsets = NSEdgeInsets(top: 6, left: 14, bottom: 12, right: 14)
-        peersStack = peers
+        peers.spacing = 8
+        peers.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding + 17, bottom: 0, right: cardPadding)
+        peersSection = peers
 
-        let statusInner = NSStackView(views: [statusRow, hairline(), peersHeader, peers])
-        statusInner.orientation = .vertical
-        statusInner.alignment = .leading
-        statusInner.spacing = 0
-        statusRow.widthAnchor.constraint(equalTo: statusInner.widthAnchor).isActive = true
-        peersHeader.widthAnchor.constraint(equalTo: statusInner.widthAnchor).isActive = true
-        peers.widthAnchor.constraint(equalTo: statusInner.widthAnchor).isActive = true
+        let statusCard = makeCard([statusRow, peers], gap: 10)
 
-        // 옵션 카드
-        let row1 = settingRow(title: L10n.t(.launchAtLogin), control: loginSwitch)
-        let row2 = settingRow(title: L10n.t(.onlyDuringRemote), control: remoteOnlySwitch)
-        let row3 = settingRow(title: L10n.t(.showInDock), subtitle: L10n.t(.dockHint), control: dockSwitch)
-        let optionsInner = NSStackView(views: [row1, hairline(), row2, hairline(), row3])
-        optionsInner.orientation = .vertical
-        optionsInner.alignment = .leading
-        optionsInner.spacing = 0
-        for row in [row1, row2, row3] {
-            row.widthAnchor.constraint(equalTo: optionsInner.widthAnchor).isActive = true
-        }
+        // 옵션 카드 (구분선 없이 여백으로 구분)
+        let optionsCard = makeCard([
+            settingRow(title: L10n.t(.launchAtLogin), control: loginSwitch),
+            settingRow(title: L10n.t(.onlyDuringRemote), control: remoteOnlySwitch),
+            settingRow(title: L10n.t(.showInDock), subtitle: L10n.t(.dockHint), control: dockSwitch),
+        ], gap: 14)
 
-        // 푸터: 버전 · GitHub · dongri.me
+        // 푸터: 버전 · GitHub · dongri.me (+ 업데이트 알림)
         func linkButton(_ title: String, action: Selector) -> NSButton {
             let b = NSButton(title: title, target: self, action: action)
             b.isBordered = false
-            b.contentTintColor = .secondaryLabelColor
+            b.contentTintColor = .tertiaryLabelColor
             b.font = .systemFont(ofSize: 11)
             return b
         }
         func dot() -> NSTextField {
             let d = NSTextField(labelWithString: "·")
             d.font = .systemFont(ofSize: 11)
-            d.textColor = .tertiaryLabelColor
+            d.textColor = .quaternaryLabelColor
             return d
         }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let versionLabel = NSTextField(labelWithString: "v\(version)")
         versionLabel.font = .systemFont(ofSize: 11)
-        versionLabel.textColor = .tertiaryLabelColor
+        versionLabel.textColor = .quaternaryLabelColor
+        let update = linkButton("", action: #selector(openUpdate))
+        update.contentTintColor = .systemOrange
+        update.isHidden = true
+        updateButton = update
         let footer = NSStackView(views: [
             versionLabel, dot(),
             linkButton("GitHub", action: #selector(openGitHub)), dot(),
             linkButton("dongri.me", action: #selector(openHomepage)),
+            update,
         ])
         footer.orientation = .horizontal
-        footer.spacing = 5
+        footer.spacing = 6
 
         // 전체 레이아웃
-        let stack = NSStackView(views: [header, card(statusInner), card(optionsInner), footer])
+        let stack = NSStackView(views: [header, statusCard, optionsCard, footer])
         stack.orientation = .vertical
         stack.alignment = .centerX
-        stack.spacing = 14
-        stack.edgeInsets = NSEdgeInsets(top: 40, left: 20, bottom: 18, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.widthAnchor.constraint(equalToConstant: contentWidth + 40).isActive = true
+        stack.spacing = 16
+        stack.setCustomSpacing(20, after: header)
+        stack.setCustomSpacing(12, after: statusCard)
+        stack.setCustomSpacing(18, after: optionsCard)
+        stack.edgeInsets = NSEdgeInsets(top: 18, left: 24, bottom: 20, right: 24)
 
-        win.contentView = stack
+        let container = NSView()
+        container.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: container.bottomAnchor),
+        ])
+        win.contentView = container
         win.setContentSize(stack.fittingSize)
         win.center()
         settingsStack = stack
@@ -310,44 +351,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsItem.title = L10n.t(.settings)
 
         // 상태: 회색=일시정지 / 빨강=연결 안 됨 / 초록=작동 중 / 주황=대기 중
-        if !engine.enabled {
-            statusDot.textColor = .systemGray
-            statusText.stringValue = L10n.t(.statusPaused)
-        } else if engine.readyPeerCount == 0 {
-            statusDot.textColor = .systemRed
-            statusText.stringValue = L10n.t(.statusNotConnected)
-        } else if engine.syncAllowed {
-            statusDot.textColor = .systemGreen
-            statusText.stringValue = L10n.t(.statusSyncing)
-        } else {
-            statusDot.textColor = .systemOrange
-            statusText.stringValue = L10n.t(.statusStandby)
+        // 문자열의 " — " 앞은 제목(굵게), 뒤는 설명(회색)으로 두 줄 표시
+        let setStatus: (L10n.Key, NSColor) -> Void = { [weak self] key, color in
+            guard let self else { return }
+            self.statusDot.textColor = color
+            let parts = L10n.t(key).components(separatedBy: " — ")
+            self.statusText.stringValue = parts[0]
+            let sub = parts.dropFirst().joined(separator: " — ")
+            self.statusSub.stringValue = sub
+            self.statusSub.isHidden = sub.isEmpty
         }
-        peersText.stringValue = L10n.connectedMacs(engine.readyPeerCount)
+        if !engine.enabled {
+            setStatus(.statusPaused, .systemGray)
+        } else if engine.readyPeerCount == 0 {
+            setStatus(.statusNotConnected, .systemRed)
+        } else if engine.syncAllowed {
+            setStatus(.statusSyncing, .systemGreen)
+        } else {
+            setStatus(.statusStandby, .systemOrange)
+        }
 
-        // 피어 목록 갱신: 이름 왼쪽, 연결 경로 오른쪽
-        if let peers = peersStack {
+        // 피어 목록: 연결된 Mac이 있을 때만 상태 아래에 표시 (이름 왼쪽 · 경로 오른쪽)
+        if let peers = peersSection {
             peers.arrangedSubviews.forEach { $0.removeFromSuperview() }
             let list = engine.peerInfo
-            if list.isEmpty {
-                let empty = NSTextField(labelWithString: L10n.t(.noPeers))
-                empty.font = .systemFont(ofSize: 12)
-                empty.textColor = .tertiaryLabelColor
-                peers.addArrangedSubview(empty)
-            } else {
-                for peer in list {
-                    let name = NSTextField(labelWithString: peer.name)
-                    name.font = .systemFont(ofSize: 13)
-                    name.setContentHuggingPriority(.defaultLow, for: .horizontal)
-                    let via = NSTextField(labelWithString: peer.via)
-                    via.font = .systemFont(ofSize: 12)
-                    via.textColor = .secondaryLabelColor
-                    let row = NSStackView(views: [name, via])
-                    row.orientation = .horizontal
-                    row.spacing = 8
-                    peers.addArrangedSubview(row)
-                    row.widthAnchor.constraint(equalTo: peers.widthAnchor, constant: -28).isActive = true
-                }
+            peers.isHidden = list.isEmpty
+            for peer in list {
+                let name = NSTextField(labelWithString: peer.name)
+                name.font = .systemFont(ofSize: 13)
+                let via = NSTextField(labelWithString: peer.via)
+                via.font = .systemFont(ofSize: 12)
+                via.textColor = .secondaryLabelColor
+                let row = NSStackView()
+                row.orientation = .horizontal
+                row.alignment = .centerY
+                row.spacing = 12
+                row.addView(name, in: .leading)
+                row.addView(via, in: .trailing)
+                peers.addArrangedSubview(row)
+                row.widthAnchor.constraint(equalTo: peers.widthAnchor, constant: -(cardPadding * 2 + 17)).isActive = true
             }
         }
 
@@ -357,11 +399,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             loginSwitch.state = (SMAppService.mainApp.status == .enabled) ? .on : .off
         }
 
-        // 목록 길이에 맞춰 창 높이 조절
-        if let win = settingsWindow, win.isVisible, let stack = settingsStack {
+        // 새 버전 알림 (메뉴 + 설정 창 푸터)
+        if updateChecker.updateAvailable, let latest = updateChecker.latestVersion {
+            let title = String(format: L10n.t(.updateAvailable), "v\(latest)")
+            updateItem.title = title
+            updateItem.isHidden = false
+            updateButton?.title = title
+            updateButton?.isHidden = false
+        } else {
+            updateItem.isHidden = true
+            updateButton?.isHidden = true
+        }
+
+        // 내용(상태 2줄, 피어 목록 등)에 맞춰 창 높이를 항상 재계산 — 여백 일정 유지
+        if let win = settingsWindow, let stack = settingsStack {
+            stack.layoutSubtreeIfNeeded()
             let size = stack.fittingSize
             if let content = win.contentView, abs(content.frame.height - size.height) > 1 {
+                let keepTopLeft = win.frame.origin
+                let delta = size.height - content.frame.height
                 win.setContentSize(size)
+                // 위쪽 기준 고정 (창이 아래로 늘어나게)
+                win.setFrameOrigin(NSPoint(x: keepTopLeft.x, y: keepTopLeft.y - delta))
             }
         }
     }
@@ -384,6 +443,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
         refresh()
+    }
+
+    @objc private func openUpdate() {
+        NSWorkspace.shared.open(updateChecker.latestURL ?? UpdateChecker.releasesPage)
     }
 
     @objc private func openGitHub() {

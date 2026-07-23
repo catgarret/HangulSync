@@ -1,7 +1,7 @@
 import Foundation
 import Carbon
 
-/// macOS 텍스트 입력 소스(한/영) 조회·변경 유틸리티
+/// macOS 텍스트 입력 소스(한·영) 조회·변경 유틸리티
 enum InputSourceManager {
 
     struct State {
@@ -17,7 +17,7 @@ enum InputSourceManager {
     }
 
     /// 원격에서 받은 상태를 이 맥에 적용.
-    /// 동일 ID가 있으면 그대로 선택, 없으면(예: 구름입력기 vs 기본 두벌식) 한/영 언어 기준으로 폴백.
+    /// 동일 ID가 있으면 그대로 선택, 없으면(예: 구름입력기 vs 기본 두벌식) 한·영 언어 기준으로 폴백.
     @discardableResult
     static func apply(id: String, isKorean korean: Bool) -> Bool {
         let sources = selectableKeyboardSources()

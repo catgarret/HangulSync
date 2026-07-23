@@ -1,0 +1,32 @@
+name: Release
+
+# v로 시작하는 태그가 푸시되면 자동으로 빌드 → zip → 릴리즈 등록 (노트 자동 작성)
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Package zip
+        run: |
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent HangulSync.app "HangulSync-${GITHUB_REF_NAME#v}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "HangulSync ${{ github.ref_name }}"
+          files: build/HangulSync-*.zip
+          generate_release_notes: true

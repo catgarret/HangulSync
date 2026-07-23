@@ -13,6 +13,12 @@ mkdir -p "$APP/Contents/MacOS"
 cp .build/release/HangulSync "$APP/Contents/MacOS/HangulSync"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
+# 최신 git 태그가 있으면 앱 버전으로 주입 (업데이트 확인 기능이 비교에 사용)
+GIT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+if [ -n "$GIT_VERSION" ]; then
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $GIT_VERSION" "$APP/Contents/Info.plist" 2>/dev/null || true
+fi
+
 # 앱 아이콘 (.icns 생성)
 if [ -d "assets/AppIcon.iconset" ]; then
     mkdir -p "$APP/Contents/Resources"

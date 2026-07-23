@@ -2,9 +2,12 @@
 # HangulSync 깃헙 배포 스크립트
 #
 # 사용법:
-#   ./deploy.sh "커밋 메시지"              → 빌드 검증 + 커밋 + 푸시
-#   ./deploy.sh "커밋 메시지" v1.0.1       → 위 과정 + 태그 + zip + GitHub Release
+#   ./deploy.sh "커밋 메시지"           → 빌드 검증 + 커밋 + 푸시
+#   ./deploy.sh "커밋 메시지" auto      → 위 과정 + 패치버전 자동 증가 태그 → GitHub Actions가 릴리즈 자동 생성
+#   ./deploy.sh "커밋 메시지" v1.2.3    → 지정한 버전으로 태그 → 자동 릴리즈
 #
+# 릴리즈 zip 빌드와 릴리즈 노트 작성은 GitHub Actions(.github/workflows/release.yml)가
+# 태그를 감지해서 자동으로 처리합니다.
 set -e
 cd "$(dirname "$0")"
 
@@ -14,7 +17,8 @@ VERSION="$2"
 if [ -z "$MSG" ]; then
     echo "❌ 커밋 메시지가 필요합니다."
     echo "   예) ./deploy.sh \"Fix reconnect bug\""
-    echo "   예) ./deploy.sh \"Add feature\" v1.0.1   (릴리즈까지)"
+    echo "   예) ./deploy.sh \"Add feature\" auto     (패치버전 자동 증가 + 릴리즈)"
+    echo "   예) ./deploy.sh \"Add feature\" v1.1.0   (버전 지정 + 릴리즈)"
     exit 1
 fi
 
@@ -47,24 +51,27 @@ if [ -z "$VERSION" ]; then
     exit 0
 fi
 
-echo "▸ 4/4 릴리즈 $VERSION 생성..."
-ZIP="build/HangulSync-${VERSION#v}.zip"
-(cd build && ditto -c -k --sequesterRsrc --keepParent HangulSync.app "$(basename "$ZIP")")
-
-git tag "$VERSION" 2>/dev/null || echo "  ℹ️ 태그 $VERSION 이미 존재"
-git push origin "$VERSION"
-
-if command -v gh >/dev/null 2>&1; then
-    gh release create "$VERSION" "$ZIP" \
-        --title "HangulSync ${VERSION#v}" \
-        --notes "$MSG" \
-        || gh release upload "$VERSION" "$ZIP" --clobber
-    echo "  ✅ 릴리즈 완료"
-else
-    echo "  ⚠️ gh CLI가 없어 릴리즈는 수동으로:"
-    echo "     https://github.com/catgarret/HangulSync/releases/new?tag=$VERSION"
-    echo "     → $ZIP 파일을 첨부하세요."
+# 버전 자동 증가 (auto): 최신 태그의 패치 번호 +1
+if [ "$VERSION" = "auto" ]; then
+    LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+    BASE="${LATEST#v}"
+    MAJOR=$(echo "$BASE" | cut -d. -f1)
+    MINOR=$(echo "$BASE" | cut -d. -f2)
+    PATCH=$(echo "$BASE" | cut -d. -f3)
+    # 태그가 하나도 없었으면 v1.0.0 그대로, 있으면 패치 +1
+    if git rev-parse "$LATEST" >/dev/null 2>&1; then
+        VERSION="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+    else
+        VERSION="v1.0.0"
+    fi
+    echo "  ℹ️ 자동 버전: $VERSION (이전: $LATEST)"
 fi
 
+echo "▸ 4/4 태그 $VERSION 푸시 → GitHub Actions가 자동 릴리즈..."
+git tag "$VERSION"
+git push origin "$VERSION"
+
 echo ""
-echo "✅ 배포 완료: https://github.com/catgarret/HangulSync/releases"
+echo "✅ 완료! 1~2분 뒤 자동으로 릴리즈가 등록됩니다 (zip + 자동 작성된 릴리즈 노트):"
+echo "   https://github.com/catgarret/HangulSync/releases"
+echo "   진행 상황: https://github.com/catgarret/HangulSync/actions"

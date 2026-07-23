@@ -353,7 +353,8 @@ final class SyncEngine {
             if self.remoteActive.count != before { self.onStateChange?() }
         }
         tick()
-        let t = Timer(timeInterval: 20, repeats: true) { _ in tick() }
+        let t = Timer(timeInterval: 30, repeats: true) { _ in tick() }
+        t.tolerance = 5 // OS가 타이머를 묶어 깨울 수 있게 여유 부여 (전력·CPU 절약)
         RunLoop.main.add(t, forMode: .common)
         retryTimer = t
     }
@@ -361,6 +362,19 @@ final class SyncEngine {
     // MARK: - Tailscale 탐색 (외부망)
 
     private func pollTailscale() {
+        // 이미 Tailscale 경로로 연결돼 있으면 프로세스 실행 자체를 생략 (외부 프로세스 스폰 최소화)
+        netQueue.async { [weak self] in
+            guard let self else { return }
+            let hasReadyTS = self.connections.contains { key, conn in
+                guard key.hasPrefix("ts-") else { return false }
+                if case .ready = conn.state { return true } else { return false }
+            }
+            if hasReadyTS { return }
+            self.runTailscaleDiscovery()
+        }
+    }
+
+    private func runTailscaleDiscovery() {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self, let json = Self.runTailscaleStatus() else { return }
             guard let obj = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
