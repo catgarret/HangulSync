@@ -10,9 +10,9 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Mac 同士の韓国語/英語入力ソースをリアルタイム同期**する軽量メニューバーアプリ。**Jump Desktop**、Screens、画面共有などのリモートデスクトップ利用時に起こるハングルの字母分離(자소 분리)や入力言語の不一致、修飾キーの誤作動を根本から解決します。
+**リモートデスクトップ接続時のハングル字母分離(`ㅎㅏㄴㄱㅡㄹ`)を解決する** macOS メニューバーアプリ。Jump Desktop、画面共有、Screens などでローカルとリモートの入力状態がずれて起こる問題を根本から断ちます。
 
-片方の Mac で入力言語を切り替えると、接続中のすべての Mac が即座に同じ状態に切り替わります。**IP アドレスの入力など設定は一切不要**です。
+韓国語/英語の入力状態が Mac 間で自動的に同期されます。IP 入力や設定は不要 — お互いを自動で見つけて接続します。
 
 ## 機能
 
@@ -28,6 +28,8 @@
 - ☁️ **インターネットリレー** — Tailscale がなくても、2台の Mac が一度直接接続されれば以後どこからでも自動同期
 
 ## インストール(両方の Mac に)
+
+> 📦 ビルド不要 — [Releases](https://github.com/catgarret/HangulSync/releases/latest) から最新の `HangulSync.zip` を取得して `/Applications` へ。(初回起動: 右クリック → 開く)
 
 ビルド済みの `HangulSync.app` をコピーしても構いません。
 

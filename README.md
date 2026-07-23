@@ -10,9 +10,9 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Mac 간 한·영 입력 소스를 실시간 동기화**하는 초경량 메뉴바 앱. **Jump Desktop**, Screens, 화면 공유 등 원격 데스크탑 사용 시 발생하는 **한글 자소 분리(`ㅎㅏㄴㄱㅡㄹ`)** 와 한영 전환 불일치, cmd 키 오작동 문제를 근본적으로 해결합니다.
+**원격 데스크탑 연결 시 한글 자소 분리(`ㅎㅏㄴㄱㅡㄹ`)를 해결하는** macOS 메뉴바 앱입니다. Jump Desktop, 화면 공유, Screens 등에서 로컬과 원격의 입력 상태가 어긋나며 생기는 문제를 근본에서 차단합니다.
 
-한쪽 Mac에서 한·영을 전환하면 연결된 모든 Mac이 즉시 같은 상태로 전환됩니다. **IP 입력 등 설정이 전혀 필요 없습니다.**
+한·영 입력 상태가 Mac 간 자동으로 동기화됩니다. IP 입력이나 별도 설정 없이, 서로를 자동으로 찾아 연결합니다.
 
 ## 왜 필요한가요?
 
@@ -32,6 +32,8 @@
 - ☁️ **인터넷 릴레이** — Tailscale 없이도 두 Mac이 한 번이라도 직접 연결된 적 있으면 이후 어디서든 자동 동기화
 
 ## 설치 (두 Mac 모두)
+
+> 📦 빌드 없이 사용하려면 [Releases](https://github.com/catgarret/HangulSync/releases/latest)에서 최신 `HangulSync.zip`을 받아 `/Applications`에 넣으세요. (첫 실행 시 우클릭 → 열기)
 
 빌드된 `HangulSync.app`을 복사해도 됩니다.
 

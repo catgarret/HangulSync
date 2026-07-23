@@ -10,9 +10,9 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A tiny menu bar app that keeps the **Korean/English input source in sync between Macs** — fixing the garbled Hangul (jamo separation, 자소 분리) and stuck-modifier issues that plague remote desktop tools like **Jump Desktop**, Screens, or Apple Screen Sharing.
+**A macOS menu bar app that fixes Hangul jamo separation (`ㅎㅏㄴㄱㅡㄹ`) over remote desktop** — it removes the root cause: local and remote input states drifting apart in Jump Desktop, Screen Sharing, Screens and more.
 
-Switch the input language on one Mac, and every connected Mac switches instantly. **Zero configuration** — no IP addresses to type in.
+The Korean/English input state syncs automatically between your Macs. No IP addresses, no setup — they find each other on their own.
 
 ## Why?
 
@@ -32,6 +32,8 @@ When you control a remote Mac over a remote desktop app, the local and remote in
 - ☁️ **Internet relay** — even without Tailscale, once the two Macs have met directly they stay in sync from anywhere, automatically
 
 ## Install
+
+> 📦 No build needed — grab the latest `HangulSync.zip` from [Releases](https://github.com/catgarret/HangulSync/releases/latest) and drop it into `/Applications`. (First launch: right-click → Open)
 
 Do this on **both** Macs (a built `HangulSync.app` can also just be copied over):
 

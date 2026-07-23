@@ -10,9 +10,9 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-一款轻量级菜单栏应用,可在多台 Mac 之间**实时同步韩语/英语输入源**,从根源上解决使用 **Jump Desktop**、Screens、屏幕共享等远程桌面工具时出现的韩文字母分离(자소 분리)、输入语言不一致和修饰键误触问题。
+**解决远程桌面连接时韩文字母分离(`ㅎㅏㄴㄱㅡㄹ`)问题**的 macOS 菜单栏应用。从根源上消除 Jump Desktop、屏幕共享、Screens 等场景下本地与远程输入状态错位导致的问题。
 
-在一台 Mac 上切换输入语言,所有已连接的 Mac 会立即切换到相同状态。**无需任何配置,无需输入 IP 地址。**
+韩语/英语输入状态在 Mac 之间自动同步。无需 IP、无需配置 —— 设备会自动发现彼此。
 
 ## 功能
 
@@ -28,6 +28,8 @@
 - ☁️ **互联网中继** — 即使没有 Tailscale,两台 Mac 只要直接连接过一次,之后在任何地方都能自动同步
 
 ## 安装(两台 Mac 都需要)
+
+> 📦 无需编译 —— 从 [Releases](https://github.com/catgarret/HangulSync/releases/latest) 下载最新 `HangulSync.zip`,放入 `/Applications`。(首次启动:右键 → 打开)
 
 也可以直接拷贝已构建的 `HangulSync.app`。
 

@@ -10,9 +10,9 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Una piccola app per la barra dei menu che **sincronizza in tempo reale la sorgente di input coreano/inglese tra Mac**, risolvendo alla radice i problemi di Hangul "spezzato" (자소 분리), lingua di input non allineata e tasti modificatori bloccati tipici di **Jump Desktop**, Screens e altri strumenti di desktop remoto.
+**App per la barra dei menu di macOS che risolve i jamo separati dell'Hangul (`ㅎㅏㄴㄱㅡㄹ`) nel desktop remoto** — elimina la causa alla radice: lo scollamento dello stato di input tra Mac locale e remoto in Jump Desktop, Condivisione Schermo, Screens e altri.
 
-Cambia lingua di input su un Mac e tutti i Mac connessi cambiano all'istante. **Zero configurazione — nessun indirizzo IP da inserire.**
+Lo stato di input coreano/inglese si sincronizza automaticamente tra i Mac. Nessun IP, nessuna configurazione: si trovano da soli.
 
 ## Funzionalità
 
@@ -28,6 +28,8 @@ Cambia lingua di input su un Mac e tutti i Mac connessi cambiano all'istante. **
 - ☁️ **Relay via internet** — anche senza Tailscale: una volta che i due Mac si sono connessi direttamente, restano sincronizzati ovunque, automaticamente
 
 ## Installazione (su entrambi i Mac)
+
+> 📦 Nessuna build necessaria — scarica l'ultimo `HangulSync.zip` da [Releases](https://github.com/catgarret/HangulSync/releases/latest) e mettilo in `/Applications`. (Primo avvio: clic destro → Apri)
 
 È anche possibile copiare direttamente `HangulSync.app` già compilata.
 
