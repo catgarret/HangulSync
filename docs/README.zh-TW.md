@@ -22,7 +22,7 @@
   - 不同網路:若 **[Tailscale](https://tailscale.com)** 正在執行,自動探索同一 tailnet 中的裝置(每 20 秒輪詢)
 - 🧠 **智慧回退** — 對方 Mac 沒有相同輸入法時,依語言自動匹配
 - 🔁 **防迴圈** — 遠端套用的變更不會被再次廣播
-- 🖥 **僅選單列** — 無 Dock 圖示,背景安靜執行,支援登入時自動啟動
+- 🖥 **輕量常駐** — 透過選單列控制,可選擇顯示/隱藏 Dock 圖示,支援登入時自動啟動
 - 🌍 **多語言介面** — 繁體中文、English、한국어、日本語、简体中文、ไทย、Русский、Italiano
 - 🎯 **僅在遠端工作階段期間運作** — 僅當使用 Jump Desktop、螢幕共享、Screens、TeamViewer、AnyDesk、RustDesk 等遠端桌面應用時同步(可在選單中改為永遠開啟)
 - ☁️ **網際網路中繼** — 即使沒有 Tailscale,兩台 Mac 只要直接連線過一次,之後在任何地方都能自動同步
@@ -34,9 +34,7 @@
 ```bash
 git clone https://github.com/catgarret/HangulSync.git
 cd HangulSync
-./build.sh
-cp -R build/HangulSync.app /Applications/
-open /Applications/HangulSync.app
+./install.sh
 ```
 
 需要 Xcode Command Line Tools(`xcode-select --install`)。

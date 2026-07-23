@@ -22,7 +22,7 @@
   - 別ネットワーク: **[Tailscale](https://tailscale.com)** が起動していれば同じ tailnet のピアを自動検出(20 秒間隔)
 - 🧠 **スマートフォールバック** — 相手の Mac に同じ入力メソッドがなくても言語ベースでマッチング
 - 🔁 **ループ防止** — リモートから適用された変更は再送信されません
-- 🖥 **メニューバー常駐** — Dock アイコンなし、ログイン時自動起動対応
+- 🖥 **軽量常駐** — メニューバーから操作、Dock アイコンの表示/非表示を選択可、ログイン時自動起動対応
 - 🌍 **多言語 UI** — 日本語、English、한국어、简体中文、繁體中文、ไทย、Русский、Italiano
 - 🎯 **リモート接続中のみ動作** — Jump Desktop、画面共有、Screens、TeamViewer、AnyDesk、RustDesk などの使用中のみ同期(メニューから常時オンに変更可)
 - ☁️ **インターネットリレー** — Tailscale がなくても、2台の Mac が一度直接接続されれば以後どこからでも自動同期
@@ -34,9 +34,7 @@
 ```bash
 git clone https://github.com/catgarret/HangulSync.git
 cd HangulSync
-./build.sh
-cp -R build/HangulSync.app /Applications/
-open /Applications/HangulSync.app
+./install.sh
 ```
 
 Xcode Command Line Tools が必要です(`xcode-select --install`)。

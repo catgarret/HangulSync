@@ -26,7 +26,7 @@
   - 다른 네트워크: **[Tailscale](https://tailscale.com)** 이 켜져 있으면 같은 tailnet의 피어를 자동 탐지 (20초 주기)
 - 🧠 **스마트 폴백** — 상대 Mac에 같은 입력기가 없어도(예: 구름입력기 vs 기본 두벌식) 언어 기준으로 알아서 매칭
 - 🔁 **루프 방지** — 원격에서 적용된 변경은 재전파되지 않음
-- 🖥 **메뉴바 전용** — Dock 아이콘 없이 백그라운드 상주, 로그인 시 자동 실행 지원
+- 🖥 **가볍게 상주** — 메뉴바에서 제어, Dock 아이콘 표시/숨김 선택 가능, 로그인 시 자동 실행 지원
 - 🌍 **다국어 UI** — 한국어, English, 日本語, 简体中文, 繁體中文, ไทย, Русский, Italiano
 - 🎯 **원격 접속 중에만 작동** — Jump Desktop, 화면 공유, Screens, TeamViewer, AnyDesk, RustDesk 등 원격 데스크탑 앱을 쓰는 동안에만 동기화 (메뉴에서 항상 켜기로 변경 가능)
 - ☁️ **인터넷 릴레이** — Tailscale 없이도 두 Mac이 한 번이라도 직접 연결된 적 있으면 이후 어디서든 자동 동기화
@@ -38,9 +38,7 @@
 ```bash
 git clone https://github.com/catgarret/HangulSync.git
 cd HangulSync
-./build.sh
-cp -R build/HangulSync.app /Applications/
-open /Applications/HangulSync.app
+./install.sh
 ```
 
 Xcode Command Line Tools 필요 (`xcode-select --install`).

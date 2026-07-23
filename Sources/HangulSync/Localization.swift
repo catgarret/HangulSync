@@ -4,7 +4,7 @@ import Foundation
 enum L10n {
     enum Key: String {
         case connectedMacs, pauseSync, resumeSync, launchAtLogin, quit
-        case loginErrorTitle, loginErrorBody, onlyDuringRemote
+        case loginErrorTitle, loginErrorBody, onlyDuringRemote, showInDock
     }
 
     private static let lang: String = {
@@ -36,6 +36,7 @@ enum L10n {
 
     private static let table: [String: [Key: String]] = [
         "en": [
+            .showInDock: "Show Icon in Dock",
             .onlyDuringRemote: "Sync Only During Remote Sessions",
             .connectedMacs: "Connected Macs: %d",
             .pauseSync: "Pause Syncing",
@@ -46,6 +47,7 @@ enum L10n {
             .loginErrorBody: "Move the app to the /Applications folder and try again.",
         ],
         "ko": [
+            .showInDock: "Dock에 아이콘 표시",
             .onlyDuringRemote: "원격 접속 중에만 동기화",
             .connectedMacs: "연결된 Mac: %d대",
             .pauseSync: "동기화 일시정지",
@@ -56,6 +58,7 @@ enum L10n {
             .loginErrorBody: "앱을 /Applications 폴더로 옮긴 뒤 다시 시도해 주세요.",
         ],
         "ja": [
+            .showInDock: "Dockにアイコンを表示",
             .onlyDuringRemote: "リモート接続中のみ同期",
             .connectedMacs: "接続中のMac: %d台",
             .pauseSync: "同期を一時停止",
@@ -66,6 +69,7 @@ enum L10n {
             .loginErrorBody: "アプリを /Applications フォルダに移動してからもう一度お試しください。",
         ],
         "zh-Hans": [
+            .showInDock: "在程序坞中显示图标",
             .onlyDuringRemote: "仅在远程会话期间同步",
             .connectedMacs: "已连接的 Mac:%d 台",
             .pauseSync: "暂停同步",
@@ -76,6 +80,7 @@ enum L10n {
             .loginErrorBody: "请将应用移动到 /Applications 文件夹后重试。",
         ],
         "zh-Hant": [
+            .showInDock: "在 Dock 中顯示圖示",
             .onlyDuringRemote: "僅在遠端工作階段期間同步",
             .connectedMacs: "已連接的 Mac:%d 台",
             .pauseSync: "暫停同步",
@@ -86,6 +91,7 @@ enum L10n {
             .loginErrorBody: "請將應用程式移至 /Applications 資料夾後再試一次。",
         ],
         "th": [
+            .showInDock: "แสดงไอคอนใน Dock",
             .onlyDuringRemote: "ซิงค์เฉพาะระหว่างการเชื่อมต่อระยะไกล",
             .connectedMacs: "Mac ที่เชื่อมต่อ: %d เครื่อง",
             .pauseSync: "หยุดการซิงค์ชั่วคราว",
@@ -96,6 +102,7 @@ enum L10n {
             .loginErrorBody: "ย้ายแอปไปยังโฟลเดอร์ /Applications แล้วลองอีกครั้ง",
         ],
         "ru": [
+            .showInDock: "Показывать значок в Dock",
             .onlyDuringRemote: "Синхронизировать только во время удалённого сеанса",
             .connectedMacs: "Подключено Mac: %d",
             .pauseSync: "Приостановить синхронизацию",
@@ -106,6 +113,7 @@ enum L10n {
             .loginErrorBody: "Переместите приложение в папку /Applications и повторите попытку.",
         ],
         "it": [
+            .showInDock: "Mostra icona nel Dock",
             .onlyDuringRemote: "Sincronizza solo durante le sessioni remote",
             .connectedMacs: "Mac connessi: %d",
             .pauseSync: "Sospendi sincronizzazione",

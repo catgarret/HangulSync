@@ -10,21 +10,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let peerItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let toggleItem = NSMenuItem(title: "", action: #selector(toggleSync), keyEquivalent: "")
     private let remoteOnlyItem = NSMenuItem(title: "", action: #selector(toggleRemoteOnly), keyEquivalent: "")
+    private let dockItem = NSMenuItem(title: "", action: #selector(toggleDock), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "", action: #selector(toggleLogin), keyEquivalent: "")
 
+    /// Dock 아이콘 표시 여부 (기본: 표시)
+    private var showInDock: Bool {
+        get {
+            UserDefaults.standard.object(forKey: "ShowInDock") == nil
+                ? true
+                : UserDefaults.standard.bool(forKey: "ShowInDock")
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "ShowInDock") }
+    }
+
+    private func applyDockPolicy() {
+        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSLog("HangulSync: 실행 시작")
+        applyDockPolicy()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.isVisible = true
 
         let menu = NSMenu()
         menu.delegate = self
         peerItem.isEnabled = false
         toggleItem.target = self
         remoteOnlyItem.target = self
+        dockItem.target = self
         loginItem.target = self
         menu.addItem(peerItem)
         menu.addItem(.separator())
         menu.addItem(toggleItem)
         menu.addItem(remoteOnlyItem)
+        menu.addItem(.separator())
+        menu.addItem(dockItem)
         menu.addItem(loginItem)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: L10n.t(.quit), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -36,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         engine.start()
         refresh()
+        NSLog("HangulSync: 메뉴바 아이콘 설치 완료 (image=\(statusItem.button?.image != nil))")
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -48,7 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let imageName = engine.enabled
                 ? (korean ? "MenubarKoTemplate" : "MenubarEnTemplate")
                 : "MenubarPauseTemplate"
-            if let img = NSImage(named: imageName) {
+            if let img = NSImage(named: imageName), img.size.width > 0 {
                 img.size = NSSize(width: 18, height: 18)
                 button.image = img
                 button.title = ""
@@ -64,6 +86,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleItem.title = engine.enabled ? L10n.t(.pauseSync) : L10n.t(.resumeSync)
         remoteOnlyItem.title = L10n.t(.onlyDuringRemote)
         remoteOnlyItem.state = engine.onlyDuringRemote ? .on : .off
+        dockItem.title = L10n.t(.showInDock)
+        dockItem.state = showInDock ? .on : .off
         if #available(macOS 13.0, *) {
             loginItem.state = (SMAppService.mainApp.status == .enabled) ? .on : .off
         }
@@ -76,6 +100,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleRemoteOnly() {
         engine.onlyDuringRemote.toggle()
+        refresh()
+    }
+
+    @objc private func toggleDock() {
+        showInDock.toggle()
+        applyDockPolicy()
+        if showInDock { NSApp.activate(ignoringOtherApps: true) }
         refresh()
     }
 
@@ -101,5 +132,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
-app.setActivationPolicy(.accessory) // 메뉴바 전용
+// Dock 표시 여부는 설정에 따라 applicationDidFinishLaunching에서 결정
 app.run()

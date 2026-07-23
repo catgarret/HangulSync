@@ -26,7 +26,7 @@ When you control a remote Mac over a remote desktop app, the local and remote in
   - Different networks: if **[Tailscale](https://tailscale.com)** is running, peers on your tailnet are found automatically (polled every 20 s)
 - 🧠 **Smart fallback** — if the exact input method doesn't exist on the other Mac (e.g. Gureum vs. built-in 2-Set Korean), it matches by language instead
 - 🔁 **Loop-safe** — remote-applied changes are never re-broadcast
-- 🖥 **Menu bar only** — no Dock icon, runs quietly in the background, launch-at-login toggle
+- 🖥 **Lightweight** — controlled from the menu bar, optional Dock icon, launch-at-login support
 - 🌍 **Localized UI** — English, 한국어, 日本語, 简体中文, 繁體中文, ไทย, Русский, Italiano
 - 🎯 **Active only during remote sessions** — syncs while a remote desktop viewer (Jump Desktop, Screen Sharing, Screens, TeamViewer, AnyDesk, RustDesk…) is in use; switchable to always-on from the menu
 - ☁️ **Internet relay** — even without Tailscale, once the two Macs have met directly they stay in sync from anywhere, automatically
@@ -38,9 +38,7 @@ Do this on **both** Macs (a built `HangulSync.app` can also just be copied over)
 ```bash
 git clone https://github.com/catgarret/HangulSync.git
 cd HangulSync
-./build.sh
-cp -R build/HangulSync.app /Applications/
-open /Applications/HangulSync.app
+./install.sh
 ```
 
 Requires Xcode Command Line Tools (`xcode-select --install`).

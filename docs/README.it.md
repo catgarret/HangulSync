@@ -22,7 +22,7 @@ Cambia lingua di input su un Mac e tutti i Mac connessi cambiano all'istante. **
   - Reti diverse: se **[Tailscale](https://tailscale.com)** è attivo, i peer del tuo tailnet vengono trovati automaticamente (polling ogni 20 s)
 - 🧠 **Fallback intelligente** — se l'altro Mac non ha lo stesso metodo di input, l'abbinamento avviene per lingua
 - 🔁 **Anti-loop** — le modifiche applicate da remoto non vengono ritrasmesse
-- 🖥 **Solo barra dei menu** — nessuna icona nel Dock, esecuzione silenziosa in background, avvio al login
+- 🖥 **Leggera** — controllo dalla barra dei menu, icona nel Dock opzionale, avvio al login
 - 🌍 **Interfaccia localizzata** — Italiano, English, 한국어, 日本語, 简体中文, 繁體中文, ไทย, Русский
 - 🎯 **Attivo solo durante le sessioni remote** — sincronizza mentre usi Jump Desktop, Condivisione Schermo, Screens, TeamViewer, AnyDesk, RustDesk ecc. (attivabile sempre dal menu)
 - ☁️ **Relay via internet** — anche senza Tailscale: una volta che i due Mac si sono connessi direttamente, restano sincronizzati ovunque, automaticamente
@@ -34,9 +34,7 @@ Cambia lingua di input su un Mac e tutti i Mac connessi cambiano all'istante. **
 ```bash
 git clone https://github.com/catgarret/HangulSync.git
 cd HangulSync
-./build.sh
-cp -R build/HangulSync.app /Applications/
-open /Applications/HangulSync.app
+./install.sh
 ```
 
 Richiede gli Xcode Command Line Tools (`xcode-select --install`).
