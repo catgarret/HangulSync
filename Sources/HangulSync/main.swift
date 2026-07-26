@@ -262,19 +262,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             settingRow(title: L10n.t(.launchAtLogin), control: loginSwitch),
             settingRow(title: L10n.t(.onlyDuringRemote), control: remoteOnlySwitch),
             settingRow(title: L10n.t(.showInDock), subtitle: L10n.t(.dockHint), control: dockSwitch),
-            NSButton(
-                title: L10n.t(.pairNewMac),
-                target: self,
-                action: #selector(startPairing)
-            ),
-            NSButton(
-                title: L10n.t(.resetPairings),
-                target: self,
-                action: #selector(resetPairings)
-            ),
         ], gap: 14)
 
-        // 푸터: 버전 · GitHub · dongri.me (+ 업데이트 알림)
+        // 페어링 액션: 주요 동작과 파괴적 동작을 한 행에 분리
+        let pairButton = NSButton(
+            title: L10n.t(.pairNewMac),
+            target: self,
+            action: #selector(startPairing)
+        )
+        pairButton.bezelStyle = .rounded
+        pairButton.controlSize = .large
+
+        let resetButton = NSButton(
+            title: L10n.t(.resetPairings),
+            target: self,
+            action: #selector(resetPairings)
+        )
+        resetButton.isBordered = false
+        resetButton.contentTintColor = .systemRed
+        resetButton.font = .systemFont(ofSize: 12)
+
+        let pairingRow = NSStackView()
+        pairingRow.orientation = .horizontal
+        pairingRow.alignment = .centerY
+        pairingRow.spacing = 12
+        pairingRow.edgeInsets = NSEdgeInsets(
+            top: 0,
+            left: cardPadding,
+            bottom: 0,
+            right: cardPadding
+        )
+        pairingRow.addView(pairButton, in: .leading)
+        pairingRow.addView(resetButton, in: .trailing)
+        let pairingCard = makeCard([pairingRow])
+
+        // 푸터: 버전 · GitHub · dongri.me
         func linkButton(_ title: String, action: Selector) -> NSButton {
             let b = NSButton(title: title, target: self, action: action)
             b.isBordered = false
@@ -300,19 +322,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             versionLabel, dot(),
             linkButton("GitHub", action: #selector(openGitHub)), dot(),
             linkButton("dongri.me", action: #selector(openHomepage)),
-            update,
         ])
         footer.orientation = .horizontal
         footer.spacing = 6
 
         // 전체 레이아웃
-        let stack = NSStackView(views: [header, statusCard, optionsCard, footer])
+        let stack = NSStackView(views: [
+            header,
+            statusCard,
+            optionsCard,
+            pairingCard,
+            update,
+            footer,
+        ])
         stack.orientation = .vertical
         stack.alignment = .centerX
         stack.spacing = 16
         stack.setCustomSpacing(20, after: header)
         stack.setCustomSpacing(12, after: statusCard)
-        stack.setCustomSpacing(18, after: optionsCard)
+        stack.setCustomSpacing(12, after: optionsCard)
+        stack.setCustomSpacing(12, after: pairingCard)
+        stack.setCustomSpacing(8, after: update)
         stack.edgeInsets = NSEdgeInsets(top: 18, left: 24, bottom: 20, right: 24)
 
         let container = NSView()
