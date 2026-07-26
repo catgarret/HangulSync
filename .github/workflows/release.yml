@@ -42,4 +42,5 @@ jobs:
         with:
           name: "HangulSync ${{ github.ref_name }}"
           files: build/HangulSync-*.zip
+          body_path: ".github/release-notes/${{ github.ref_name }}.md"
           generate_release_notes: true
