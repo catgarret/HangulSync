@@ -30,10 +30,13 @@ final class SyncEngine {
     private static let onlyRemoteDefaults = "OnlyDuringRemote"
     private static let deviceIDDefaults = "DeviceID"
     private static let trustedOriginsDefaults = "TrustedDeviceIDs"
+    private static let peerPublicKeysDefaults = "TrustedPeerPublicKeys"
     private static let pairingDuration: TimeInterval = 60
 
     let instanceID: String
     let serviceName: String
+    private let identity: SecureIdentity?
+    private let relay: RelayChannel
 
     private let netQueue = DispatchQueue(label: "hangulsync.network")
     private var listener: NWListener?
@@ -43,7 +46,9 @@ final class SyncEngine {
     private var messageTimesByKey: [String: [Date]] = [:]       // netQueue에서만 접근
     private var trustedConnectionKeys: Set<String> = []         // netQueue에서만 접근
     private var trustedOrigins: Set<String> = []                 // netQueue에서만 접근
+    private var peerPublicKeys: [String: String] = [:]           // netQueue에서만 접근
     private var pendingApprovalOrigins: Set<String> = []         // netQueue에서만 접근
+    private var pairingHelloRepliedOrigins: Set<String> = []    // netQueue에서만 접근
     private var lastBonjourResults: Set<NWBrowser.Result> = []  // netQueue에서만 접근
     private var retryTimer: Timer?
     private var pairingUntil = Date.distantPast
@@ -57,7 +62,7 @@ final class SyncEngine {
     private(set) var localViewerActive = false
     private(set) var readyPeerCount = 0
     /// 설정 창에 보여줄 피어 목록: (컴퓨터 이름, 연결 경로)
-    private(set) var peerInfo: [(name: String, via: String)] = []
+    private(set) var peerInfo: [(id: String, name: String, via: String)] = []
 
     let hostName = Host.current().localizedName ?? "Mac"
 
@@ -85,20 +90,25 @@ final class SyncEngine {
 
     init() {
         let defaults = UserDefaults.standard
+        let secureIdentity = SecureIdentity.loadOrCreate()
         let deviceID: String
-        if let saved = defaults.string(forKey: Self.deviceIDDefaults),
+        if let secureIdentity {
+            deviceID = secureIdentity.deviceID
+        } else if let saved = defaults.string(forKey: Self.deviceIDDefaults),
            UUID(uuidString: saved) != nil {
             deviceID = saved
         } else {
             deviceID = UUID().uuidString
             defaults.set(deviceID, forKey: Self.deviceIDDefaults)
         }
+        self.identity = secureIdentity
         self.instanceID = deviceID
+        self.relay = RelayChannel(localID: deviceID)
         let host = Host.current().localizedName ?? "Mac"
         self.serviceName = "\(host)-\(deviceID.prefix(8))"
-        self.trustedOrigins = Set(
-            defaults.stringArray(forKey: Self.trustedOriginsDefaults) ?? []
-        )
+        self.peerPublicKeys = defaults.dictionary(forKey: Self.peerPublicKeysDefaults)?
+            .compactMapValues { $0 as? String } ?? [:]
+        self.trustedOrigins = Set(self.peerPublicKeys.keys)
         if defaults.object(forKey: Self.onlyRemoteDefaults) == nil {
             self.onlyDuringRemote = true
         } else {
@@ -108,6 +118,18 @@ final class SyncEngine {
 
     func start() {
         lastKnownID = InputSourceManager.current()?.id
+        relay.onMessage = { [weak self] message, peerID in
+            self?.netQueue.async {
+                self?.handle(message, fromKey: "relay-\(peerID)")
+            }
+        }
+        if let identity {
+            for (peerID, publicKey) in peerPublicKeys {
+                if let secret = identity.sharedSecret(with: publicKey) {
+                    relay.configure(peerID: peerID, sharedSecret: secret)
+                }
+            }
+        }
         observeLocalChanges()
         observeViewerApps()
         startListener()
@@ -195,12 +217,28 @@ final class SyncEngine {
                 conn.send(content: data, completion: .contentProcessed { _ in })
             }
         }
+        DispatchQueue.main.async {
+            if requiresTrust, self.readyPeerCount == 0 {
+                self.relay.publish(msg)
+            }
+        }
     }
 
     // MARK: - 메시지 수신 (netQueue에서 호출)
 
     private func handle(_ msg: SyncMessage, fromKey key: String) {
         guard msg.origin != instanceID else { return }
+        if msg.kind == .hello {
+            guard let publicKey = msg.publicKey,
+                  SecureIdentity.deviceID(for: publicKey) == msg.origin else {
+                connections[key]?.cancel()
+                return
+            }
+            if let trustedKey = peerPublicKeys[msg.origin], trustedKey != publicKey {
+                connections[key]?.cancel()
+                return
+            }
+        }
         if let boundOrigin = originByKey[key] {
             guard boundOrigin == msg.origin else {
                 connections[key]?.cancel()
@@ -221,6 +259,19 @@ final class SyncEngine {
 
         switch msg.kind {
         case .hello:
+            if Date() < pairingUntil,
+               !trustedOrigins.contains(msg.origin),
+               pairingHelloRepliedOrigins.insert(msg.origin).inserted {
+                push(
+                    SyncMessage(
+                        origin: instanceID,
+                        kind: .hello,
+                        name: hostName,
+                        publicKey: identity?.publicKeyBase64
+                    ),
+                    requiresTrust: false
+                )
+            }
             requestApproval(for: msg)
             DispatchQueue.main.async {
                 self.namesByOrigin[msg.origin] = msg.name ?? "Mac"
@@ -255,11 +306,59 @@ final class SyncEngine {
 
     /// 후속 승인 UI에서만 호출한다. 이 창 자체는 어떤 키도 신뢰/저장하지 않는다.
     func beginPairingMode() {
-        pairingUntil = Date().addingTimeInterval(Self.pairingDuration)
+        netQueue.async {
+            self.pairingUntil = Date().addingTimeInterval(Self.pairingDuration)
+            self.pairingHelloRepliedOrigins.removeAll()
+            self.push(
+                SyncMessage(
+                    origin: self.instanceID,
+                    kind: .hello,
+                    name: self.hostName,
+                    publicKey: self.identity?.publicKeyBase64
+                ),
+                requiresTrust: false
+            )
+        }
+    }
+
+    func forgetPeer(id: String) {
+        netQueue.async {
+            self.trustedOrigins.remove(id)
+            self.peerPublicKeys.removeValue(forKey: id)
+            self.persistTrustedPeers()
+            self.relay.remove(peerID: id)
+            for (key, origin) in self.originByKey where origin == id {
+                self.connections[key]?.cancel()
+            }
+        }
+    }
+
+    func resetPairings() {
+        netQueue.async {
+            let peerIDs = Array(self.peerPublicKeys.keys)
+            self.trustedOrigins.removeAll()
+            self.peerPublicKeys.removeAll()
+            self.persistTrustedPeers()
+            for peerID in peerIDs { self.relay.remove(peerID: peerID) }
+            for connection in self.connections.values { connection.cancel() }
+        }
+    }
+
+    private func persistTrustedPeers() {
+        UserDefaults.standard.set(
+            trustedOrigins.sorted(),
+            forKey: Self.trustedOriginsDefaults
+        )
+        UserDefaults.standard.set(peerPublicKeys, forKey: Self.peerPublicKeysDefaults)
     }
 
     private func requestApproval(for message: SyncMessage) {
         let origin = message.origin
+        guard let publicKey = message.publicKey,
+              let identity,
+              let confirmationCode = identity.confirmationCode(with: publicKey),
+              Date() < pairingUntil
+        else { return }
         guard !trustedOrigins.contains(origin),
               !pendingApprovalOrigins.contains(origin) else { return }
         pendingApprovalOrigins.insert(origin)
@@ -267,7 +366,12 @@ final class SyncEngine {
         DispatchQueue.main.async {
             let alert = NSAlert()
             alert.messageText = L10n.t(.connectionRequest)
-            alert.informativeText = String(format: L10n.t(.connectionRequestBody), peerName)
+            alert.informativeText =
+                String(format: L10n.t(.connectionRequestBody), peerName)
+                + "\n\n"
+                + String(format: L10n.t(.pairingCode), confirmationCode)
+                + "\n"
+                + L10n.t(.pairingHint)
             alert.alertStyle = .warning
             alert.addButton(withTitle: L10n.t(.approve))
             alert.addButton(withTitle: L10n.t(.reject))
@@ -280,10 +384,11 @@ final class SyncEngine {
                 guard !matchingKeys.isEmpty else { return }
                 if approved {
                     self.trustedOrigins.insert(origin)
-                    UserDefaults.standard.set(
-                        self.trustedOrigins.sorted(),
-                        forKey: Self.trustedOriginsDefaults
-                    )
+                    self.peerPublicKeys[origin] = publicKey
+                    self.persistTrustedPeers()
+                    if let secret = identity.sharedSecret(with: publicKey) {
+                        self.relay.configure(peerID: origin, sharedSecret: secret)
+                    }
                     self.trustedConnectionKeys.formUnion(matchingKeys)
                     self.recountPeers()
                     DispatchQueue.main.async {
@@ -470,7 +575,12 @@ final class SyncEngine {
                 DispatchQueue.main.async {
                     // 이름 소개 (피어 목록·고유 카운트용)
                     self.push(
-                        SyncMessage(origin: self.instanceID, kind: .hello, name: self.hostName),
+                        SyncMessage(
+                            origin: self.instanceID,
+                            kind: .hello,
+                            name: self.hostName,
+                            publicKey: self.identity?.publicKeyBase64
+                        ),
                         requiresTrust: false
                     )
                     // 내가 원격 세션 중이면 새 피어에게 즉시 알림 + 상태 정렬
@@ -530,7 +640,7 @@ final class SyncEngine {
                     let via: L10n.Key = key.hasPrefix("bonjour") ? .viaLocalNetwork
                         : key.hasPrefix("ts-") ? .viaTailscale
                         : .viaIncoming
-                    return (name, L10n.t(via))
+                    return (origin, name, L10n.t(via))
                 }.sorted { $0.name < $1.name }
                 self.onStateChange?()
             }

@@ -49,6 +49,8 @@ HangulSync reduces these problems by keeping the input sources aligned.
   Always-on mode is available from the menu
 - **Connection approval**
   a new direct connection exchanges input state only after user approval
+- **Encrypted internet relay**
+  paired Macs use ntfy with end-to-end encryption when no direct connection is available
 
 ## Install
 

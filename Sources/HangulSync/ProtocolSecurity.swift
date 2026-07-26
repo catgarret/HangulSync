@@ -16,6 +16,7 @@ struct SyncMessage: Codable {
     var sessionActive: Bool? = nil
     var relayKey: String? = nil
     var name: String? = nil
+    var publicKey: String? = nil
 }
 
 enum ProtocolSecurity {
@@ -41,23 +42,28 @@ enum ProtocolSecurity {
         if let sourceID = message.sourceID,
            sourceID.isEmpty || sourceID.utf8.count > maxSourceIDLength { return false }
         if let relayKey = message.relayKey, !isValidRelayKey(relayKey) { return false }
+        if let publicKey = message.publicKey,
+           publicKey.utf8.count > 64 || Data(base64Encoded: publicKey)?.count != 32 {
+            return false
+        }
 
         switch message.kind {
         case .hello:
-            return message.name != nil
+            return message.name != nil && message.publicKey != nil
                 && message.sourceID == nil && message.isKorean == nil
                 && message.sessionActive == nil && message.relayKey == nil
         case .input:
             return message.sourceID != nil
-                && message.sessionActive == nil && message.relayKey == nil && message.name == nil
+                && message.sessionActive == nil && message.relayKey == nil
+                && message.name == nil && message.publicKey == nil
         case .session:
             return message.sessionActive != nil
                 && message.sourceID == nil && message.isKorean == nil
-                && message.relayKey == nil && message.name == nil
+                && message.relayKey == nil && message.name == nil && message.publicKey == nil
         case .pair:
             return message.relayKey != nil
                 && message.sourceID == nil && message.isKorean == nil
-                && message.sessionActive == nil && message.name == nil
+                && message.sessionActive == nil && message.name == nil && message.publicKey == nil
         }
     }
 

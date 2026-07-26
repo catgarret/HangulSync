@@ -262,6 +262,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             settingRow(title: L10n.t(.launchAtLogin), control: loginSwitch),
             settingRow(title: L10n.t(.onlyDuringRemote), control: remoteOnlySwitch),
             settingRow(title: L10n.t(.showInDock), subtitle: L10n.t(.dockHint), control: dockSwitch),
+            NSButton(
+                title: L10n.t(.pairNewMac),
+                target: self,
+                action: #selector(startPairing)
+            ),
+            NSButton(
+                title: L10n.t(.resetPairings),
+                target: self,
+                action: #selector(resetPairings)
+            ),
         ], gap: 14)
 
         // 푸터: 버전 · GitHub · dongri.me (+ 업데이트 알림)
@@ -388,6 +398,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 row.spacing = 12
                 row.addView(name, in: .leading)
                 row.addView(via, in: .trailing)
+                let forget = NSButton(
+                    title: L10n.t(.forgetDevice),
+                    target: self,
+                    action: #selector(forgetPeer(_:))
+                )
+                forget.identifier = NSUserInterfaceItemIdentifier(peer.id)
+                forget.bezelStyle = .inline
+                row.addView(forget, in: .trailing)
                 peers.addArrangedSubview(row)
                 row.widthAnchor.constraint(equalTo: peers.widthAnchor, constant: -(cardPadding * 2 + 17)).isActive = true
             }
@@ -430,6 +448,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @objc private func toggleSync() {
         engine.enabled.toggle()
         refresh()
+    }
+
+    @objc private func startPairing() {
+        engine.beginPairingMode()
+    }
+
+    @objc private func forgetPeer(_ sender: NSButton) {
+        guard let id = sender.identifier?.rawValue else { return }
+        engine.forgetPeer(id: id)
+    }
+
+    @objc private func resetPairings() {
+        engine.resetPairings()
     }
 
     @objc private func toggleRemoteOnly() {

@@ -8,6 +8,8 @@ enum L10n {
         case tagline, statusSyncing, statusStandby, statusPaused, dockHint
         case viaLocalNetwork, viaTailscale, viaIncoming, noPeers, statusNotConnected, updateAvailable
         case connectionRequest, connectionRequestBody, approve, reject
+        case pairNewMac, pairingCode, pairingHint
+        case forgetDevice, resetPairings
     }
 
     private static let lang: String = {
@@ -43,6 +45,11 @@ enum L10n {
             .connectionRequestBody: "%@ wants to sync input sources. Do you trust this connection?",
             .approve: "Approve",
             .reject: "Reject",
+            .pairNewMac: "Pair New Mac",
+            .pairingCode: "Confirmation code: %@",
+            .pairingHint: "Confirm that the same code appears on both Macs.",
+            .forgetDevice: "Forget",
+            .resetPairings: "Reset All Pairings",
             .updateAvailable: "Update to %@ available…",
             .statusNotConnected: "No Macs connected — run HangulSync on your other Mac too",
             .viaLocalNetwork: "local network",
@@ -70,6 +77,11 @@ enum L10n {
             .connectionRequestBody: "%@에서 입력 소스 동기화를 요청했습니다. 이 연결을 신뢰합니까?",
             .approve: "승인",
             .reject: "거부",
+            .pairNewMac: "새 Mac 페어링",
+            .pairingCode: "확인 코드: %@",
+            .pairingHint: "두 Mac에 같은 코드가 표시되는지 확인하세요.",
+            .forgetDevice: "기기 삭제",
+            .resetPairings: "모든 페어링 초기화",
             .updateAvailable: "새 버전 %@ 업데이트…",
             .statusNotConnected: "연결된 Mac 없음 — 상대 Mac에서도 HangulSync를 실행하세요",
             .viaLocalNetwork: "같은 네트워크",
@@ -93,6 +105,11 @@ enum L10n {
             .loginErrorBody: "앱을 /Applications 폴더로 옮긴 뒤 다시 시도해 주세요.",
         ],
         "ja": [
+            .pairNewMac: "新しい Mac をペアリング",
+            .pairingCode: "確認コード: %@",
+            .pairingHint: "両方の Mac に同じコードが表示されていることを確認してください。",
+            .forgetDevice: "削除",
+            .resetPairings: "すべてのペアリングをリセット",
             .updateAvailable: "新バージョン %@ にアップデート…",
             .statusNotConnected: "接続中の Mac なし — もう一台の Mac でも HangulSync を実行してください",
             .viaLocalNetwork: "同一ネットワーク",
@@ -116,6 +133,11 @@ enum L10n {
             .loginErrorBody: "アプリを /Applications フォルダに移動してからもう一度お試しください。",
         ],
         "zh-Hans": [
+            .pairNewMac: "配对新 Mac",
+            .pairingCode: "确认代码：%@",
+            .pairingHint: "请确认两台 Mac 显示相同的代码。",
+            .forgetDevice: "删除",
+            .resetPairings: "重置所有配对",
             .updateAvailable: "有新版本 %@,点击更新…",
             .statusNotConnected: "没有已连接的 Mac — 请在另一台 Mac 上也运行 HangulSync",
             .viaLocalNetwork: "同一网络",
@@ -139,6 +161,11 @@ enum L10n {
             .loginErrorBody: "请将应用移动到 /Applications 文件夹后重试。",
         ],
         "zh-Hant": [
+            .pairNewMac: "配對新的 Mac",
+            .pairingCode: "確認碼：%@",
+            .pairingHint: "請確認兩台 Mac 顯示相同的代碼。",
+            .forgetDevice: "刪除",
+            .resetPairings: "重設所有配對",
             .updateAvailable: "有新版本 %@,點擊更新…",
             .statusNotConnected: "沒有已連接的 Mac — 請在另一台 Mac 上也執行 HangulSync",
             .viaLocalNetwork: "同一網路",
@@ -162,6 +189,11 @@ enum L10n {
             .loginErrorBody: "請將應用程式移至 /Applications 資料夾後再試一次。",
         ],
         "th": [
+            .pairNewMac: "จับคู่ Mac เครื่องใหม่",
+            .pairingCode: "รหัสยืนยัน: %@",
+            .pairingHint: "ตรวจสอบว่า Mac ทั้งสองเครื่องแสดงรหัสเดียวกัน",
+            .forgetDevice: "ลบ",
+            .resetPairings: "รีเซ็ตการจับคู่ทั้งหมด",
             .updateAvailable: "มีเวอร์ชันใหม่ %@ อัปเดต…",
             .statusNotConnected: "ไม่มี Mac ที่เชื่อมต่อ — โปรดเปิด HangulSync บน Mac อีกเครื่องด้วย",
             .viaLocalNetwork: "เครือข่ายเดียวกัน",
@@ -185,6 +217,11 @@ enum L10n {
             .loginErrorBody: "ย้ายแอปไปยังโฟลเดอร์ /Applications แล้วลองอีกครั้ง",
         ],
         "ru": [
+            .pairNewMac: "Подключить новый Mac",
+            .pairingCode: "Код подтверждения: %@",
+            .pairingHint: "Убедитесь, что на обоих Mac показан одинаковый код.",
+            .forgetDevice: "Удалить",
+            .resetPairings: "Сбросить все подключения",
             .updateAvailable: "Доступно обновление %@…",
             .statusNotConnected: "Нет подключённых Mac — запустите HangulSync и на втором Mac",
             .viaLocalNetwork: "локальная сеть",
@@ -208,6 +245,11 @@ enum L10n {
             .loginErrorBody: "Переместите приложение в папку /Applications и повторите попытку.",
         ],
         "it": [
+            .pairNewMac: "Abbina un nuovo Mac",
+            .pairingCode: "Codice di conferma: %@",
+            .pairingHint: "Verifica che lo stesso codice appaia su entrambi i Mac.",
+            .forgetDevice: "Rimuovi",
+            .resetPairings: "Reimposta tutti gli abbinamenti",
             .updateAvailable: "Aggiornamento %@ disponibile…",
             .statusNotConnected: "Nessun Mac connesso — esegui HangulSync anche sull'altro Mac",
             .viaLocalNetwork: "rete locale",

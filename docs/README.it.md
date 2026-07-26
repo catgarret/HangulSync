@@ -40,6 +40,8 @@ Tailscale può essere usato tra reti diverse.
   La modalità sempre attiva è disponibile dal menu
 - **Approvazione della connessione**
   una nuova connessione non scambia lo stato di input prima dell'approvazione
+- **Relay Internet cifrato**
+  i Mac abbinati usano ntfy con crittografia end-to-end quando non è disponibile una connessione diretta
 
 ## Installazione (su entrambi i Mac)
 

@@ -4,7 +4,12 @@ import XCTest
 final class ProtocolSecurityTests: XCTestCase {
     func testValidMessages() {
         XCTAssertTrue(ProtocolSecurity.validate(
-            SyncMessage(origin: "peer", kind: .hello, name: "Mac")
+            SyncMessage(
+                origin: "peer",
+                kind: .hello,
+                name: "Mac",
+                publicKey: Data(repeating: 1, count: 32).base64EncodedString()
+            )
         ))
         XCTAssertTrue(ProtocolSecurity.validate(
             SyncMessage(origin: "peer", kind: .input, sourceID: "com.apple.keylayout.US", isKorean: false)
@@ -27,10 +32,20 @@ final class ProtocolSecurityTests: XCTestCase {
 
     func testFieldAndMessageLimits() throws {
         XCTAssertFalse(ProtocolSecurity.validate(
-            SyncMessage(origin: String(repeating: "a", count: 65), kind: .hello, name: "Mac")
+            SyncMessage(
+                origin: String(repeating: "a", count: 65),
+                kind: .hello,
+                name: "Mac",
+                publicKey: Data(repeating: 1, count: 32).base64EncodedString()
+            )
         ))
         XCTAssertFalse(ProtocolSecurity.validate(
-            SyncMessage(origin: "peer", kind: .hello, name: String(repeating: "a", count: 101))
+            SyncMessage(
+                origin: "peer",
+                kind: .hello,
+                name: String(repeating: "a", count: 101),
+                publicKey: Data(repeating: 1, count: 32).base64EncodedString()
+            )
         ))
         XCTAssertFalse(ProtocolSecurity.validate(
             SyncMessage(origin: "peer", kind: .input, sourceID: String(repeating: "a", count: 257))
