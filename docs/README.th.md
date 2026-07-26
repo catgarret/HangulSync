@@ -89,4 +89,4 @@ cd HangulSync
 
 ## สัญญาอนุญาต
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · สร้างด้วย AI vibe coding

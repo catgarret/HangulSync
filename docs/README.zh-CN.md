@@ -78,4 +78,4 @@ cd HangulSync
 
 ## 许可证
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · 使用 AI 氛围编程制作。

@@ -78,4 +78,4 @@ cd HangulSync
 
 ## 授權
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · 使用 AI 氛圍程式設計製作。

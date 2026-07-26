@@ -83,4 +83,4 @@ cd HangulSync
 
 ## Лицензия
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · Создано с помощью AI-вайб-кодинга.

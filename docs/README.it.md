@@ -79,4 +79,4 @@ Richiede gli Xcode Command Line Tools (`xcode-select --install`).
 
 ## Licenza
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · Realizzato con AI vibe coding.

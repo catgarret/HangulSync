@@ -90,4 +90,4 @@ or quit.
 
 ## License
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · Built with AI vibe coding.

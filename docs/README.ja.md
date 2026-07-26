@@ -77,4 +77,4 @@ Xcode Command Line Tools が必要です(`xcode-select --install`)。
 
 ## ライセンス
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · AIバイブコーディングで作りました。

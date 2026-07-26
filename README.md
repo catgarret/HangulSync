@@ -89,4 +89,4 @@ Xcode Command Line Tools 필요 (`xcode-select --install`).
 
 ## 라이선스
 
-MIT © [dongri.me](https://dongri.me/)
+MIT © [dongri.me](https://dongri.me/) · AI 바이브코딩으로 만들었습니다.
