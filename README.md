@@ -4,14 +4,7 @@
 
 <h1 align="center">HangulSync</h1>
 
-**한국어**<br>
-[English](docs/README.en.md)<br>
-[日本語](docs/README.ja.md)<br>
-[简体中文](docs/README.zh-CN.md)<br>
-[繁體中文](docs/README.zh-TW.md)<br>
-[ไทย](docs/README.th.md)<br>
-[Русский](docs/README.ru.md)<br>
-[Italiano](docs/README.it.md)
+**한국어** | [English](docs/README.en.md) | [日本語](docs/README.ja.md) | [简体中文](docs/README.zh-CN.md) | [繁體中文](docs/README.zh-TW.md) | [ไทย](docs/README.th.md) | [Русский](docs/README.ru.md) | [Italiano](docs/README.it.md)
 
 ![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
