@@ -7,6 +7,7 @@ enum L10n {
         case loginErrorTitle, loginErrorBody, onlyDuringRemote, showInDock, settings
         case tagline, statusSyncing, statusStandby, statusPaused, dockHint
         case viaLocalNetwork, viaTailscale, viaIncoming, noPeers, statusNotConnected, updateAvailable
+        case connectionRequest, connectionRequestBody, approve, reject
     }
 
     private static let lang: String = {
@@ -38,6 +39,10 @@ enum L10n {
 
     private static let table: [String: [Key: String]] = [
         "en": [
+            .connectionRequest: "HangulSync Connection Request",
+            .connectionRequestBody: "%@ wants to sync input sources. Do you trust this connection?",
+            .approve: "Approve",
+            .reject: "Reject",
             .updateAvailable: "Update to %@ available…",
             .statusNotConnected: "No Macs connected — run HangulSync on your other Mac too",
             .viaLocalNetwork: "local network",
@@ -61,6 +66,10 @@ enum L10n {
             .loginErrorBody: "Move the app to the /Applications folder and try again.",
         ],
         "ko": [
+            .connectionRequest: "HangulSync 연결 요청",
+            .connectionRequestBody: "%@에서 입력 소스 동기화를 요청했습니다. 이 연결을 신뢰합니까?",
+            .approve: "승인",
+            .reject: "거부",
             .updateAvailable: "새 버전 %@ 업데이트…",
             .statusNotConnected: "연결된 Mac 없음 — 상대 Mac에서도 HangulSync를 실행하세요",
             .viaLocalNetwork: "같은 네트워크",

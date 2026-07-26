@@ -37,6 +37,7 @@ final class UpdateChecker {
             guard let self, let data,
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = obj["tag_name"] as? String else { return }
+            guard SemanticVersion(tag) != nil else { return }
             DispatchQueue.main.async {
                 self.latestVersion = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
                 self.latestURL = (obj["html_url"] as? String).flatMap(URL.init) ?? Self.releasesPage
@@ -47,13 +48,7 @@ final class UpdateChecker {
 
     /// 단순 semver 비교 (1.2.10 > 1.2.9)
     static func version(_ a: String, isNewerThan b: String) -> Bool {
-        let av = a.split(separator: ".").map { Int($0) ?? 0 }
-        let bv = b.split(separator: ".").map { Int($0) ?? 0 }
-        for i in 0..<max(av.count, bv.count) {
-            let x = i < av.count ? av[i] : 0
-            let y = i < bv.count ? bv[i] : 0
-            if x != y { return x > y }
-        }
-        return false
+        guard let av = SemanticVersion(a), let bv = SemanticVersion(b) else { return false }
+        return av > bv
     }
 }

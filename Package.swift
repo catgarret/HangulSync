@@ -8,6 +8,11 @@ let package = Package(
         .executableTarget(
             name: "HangulSync",
             path: "Sources/HangulSync"
+        ),
+        .testTarget(
+            name: "HangulSyncTests",
+            dependencies: ["HangulSync"],
+            path: "Tests/HangulSyncTests"
         )
     ]
 )

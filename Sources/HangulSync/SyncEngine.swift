@@ -3,19 +3,8 @@ import AppKit
 import Carbon
 import Network
 
-/// 동기화 메시지 (newline-delimited JSON)
-struct SyncMessage: Codable {
-    var origin: String        // 보낸 인스턴스 UUID (자기 메시지 무시용)
-    var kind: String?         // nil/"input" | "session" | "pair" | "hello"
-    var sourceID: String?     // input: 입력 소스 ID
-    var isKorean: Bool?       // input: 한국어 여부 (폴백 매칭용)
-    var sessionActive: Bool?  // session: 원격 세션 활성 여부
-    var relayKey: String?     // pair: 릴레이 페어링 키 (직접 연결로만 전송)
-    var name: String?         // hello: 사람이 읽는 컴퓨터 이름
-}
-
 /// 입력 소스 변경 감지 → 피어 전파, 피어 메시지 수신 → 로컬 적용.
-/// 피어 경로: ① Bonjour(같은 네트워크/AWDL) ② Tailscale ③ 인터넷 릴레이(자동 페어링 후)
+/// 피어 경로: ① Bonjour(같은 네트워크/AWDL) ② Tailscale
 /// 기본적으로 원격 데스크탑 뷰어가 사용 중일 때만 동기화가 활성화된다.
 final class SyncEngine {
 
@@ -38,8 +27,8 @@ final class SyncEngine {
 
     private static let sessionTTL: TimeInterval = 600      // 원격 세션 신호 유효시간
     private static let sessionRefresh: TimeInterval = 240  // 세션 유지 재전송 주기
-    private static let relayKeyDefaults = "RelayKey"
     private static let onlyRemoteDefaults = "OnlyDuringRemote"
+    private static let pairingDuration: TimeInterval = 60
 
     let instanceID = UUID().uuidString
     let serviceName: String
@@ -49,9 +38,12 @@ final class SyncEngine {
     private var browser: NWBrowser?
     private var connections: [String: NWConnection] = [:]      // netQueue에서만 접근
     private var originByKey: [String: String] = [:]             // netQueue에서만 접근
+    private var messageTimesByKey: [String: [Date]] = [:]       // netQueue에서만 접근
+    private var trustedConnectionKeys: Set<String> = []         // netQueue에서만 접근
+    private var pendingApprovalKeys: Set<String> = []            // netQueue에서만 접근
     private var lastBonjourResults: Set<NWBrowser.Result> = []  // netQueue에서만 접근
     private var retryTimer: Timer?
-    private let relay = RelayChannel()
+    private var pairingUntil = Date.distantPast
 
     // ↓ 메인 스레드에서만 접근
     private var suppressUntil = Date.distantPast
@@ -100,12 +92,6 @@ final class SyncEngine {
 
     func start() {
         lastKnownID = InputSourceManager.current()?.id
-        relay.onMessage = { [weak self] msg in
-            self?.netQueue.async { self?.handle(msg, fromKey: "relay") }
-        }
-        if let key = UserDefaults.standard.string(forKey: Self.relayKeyDefaults) {
-            relay.configure(key: key)
-        }
         observeLocalChanges()
         observeViewerApps()
         startListener()
@@ -175,31 +161,22 @@ final class SyncEngine {
     // MARK: - 메시지 송신
 
     private func send(input state: InputSourceManager.State) {
-        push(SyncMessage(origin: instanceID, kind: "input",
+        push(SyncMessage(origin: instanceID, kind: .input,
                          sourceID: state.id, isKorean: state.isKorean))
     }
 
     private func send(session active: Bool) {
-        push(SyncMessage(origin: instanceID, kind: "session", sessionActive: active))
+        push(SyncMessage(origin: instanceID, kind: .session, sessionActive: active))
     }
 
-    private func send(pairKey: String) {
-        push(SyncMessage(origin: instanceID, kind: "pair", relayKey: pairKey), viaRelay: false)
-    }
-
-    private func push(_ msg: SyncMessage, viaRelay: Bool = true) {
+    private func push(_ msg: SyncMessage, requiresTrust: Bool = true) {
         guard var data = try? JSONEncoder().encode(msg) else { return }
         data.append(0x0A) // "\n"
         netQueue.async {
-            for conn in self.connections.values {
+            for (key, conn) in self.connections {
                 guard case .ready = conn.state else { continue }
+                guard !requiresTrust || self.trustedConnectionKeys.contains(key) else { continue }
                 conn.send(content: data, completion: .contentProcessed { _ in })
-            }
-        }
-        if viaRelay {
-            DispatchQueue.main.async {
-                // 직접 연결된 피어가 없을 때만 릴레이 사용
-                if self.readyPeerCount == 0 { self.relay.publish(msg) }
             }
         }
     }
@@ -208,15 +185,29 @@ final class SyncEngine {
 
     private func handle(_ msg: SyncMessage, fromKey key: String) {
         guard msg.origin != instanceID else { return }
-        if key != "relay" { originByKey[key] = msg.origin }
+        if let boundOrigin = originByKey[key] {
+            guard boundOrigin == msg.origin else {
+                connections[key]?.cancel()
+                return
+            }
+        } else {
+            originByKey[key] = msg.origin
+        }
+        guard ProtocolSecurity.permits(
+            msg.kind,
+            enabled: enabled,
+            trusted: trustedConnectionKeys.contains(key),
+            pairingMode: Date() < pairingUntil
+        ) else { return }
 
         switch msg.kind {
-        case "hello":
+        case .hello:
+            requestApproval(forKey: key, message: msg)
             DispatchQueue.main.async {
                 self.namesByOrigin[msg.origin] = msg.name ?? "Mac"
             }
             recountPeers()
-        case "session":
+        case .session:
             let active = msg.sessionActive == true
             DispatchQueue.main.async {
                 if active {
@@ -226,10 +217,11 @@ final class SyncEngine {
                 }
                 self.onStateChange?()
             }
-        case "pair":
-            guard let theirs = msg.relayKey else { return }
-            DispatchQueue.main.async { self.mergePairKey(theirs) }
-        default: // input
+        case .pair:
+            // 1차 긴급 수정: 페어링 UI/상호 인증이 완성되기 전에는 키를
+            // 저장하거나 응답하지 않는다. 명시적 60초 창도 후속 승인 흐름 전용이다.
+            return
+        case .input:
             guard let sourceID = msg.sourceID else { return }
             DispatchQueue.main.async {
                 guard self.syncAllowed else { return }
@@ -242,30 +234,41 @@ final class SyncEngine {
         }
     }
 
-    // MARK: - 릴레이 페어링 (직접 연결됐을 때 키 자동 합의·저장)
-
-    private var relayKey: String? {
-        UserDefaults.standard.string(forKey: Self.relayKeyDefaults)
+    /// 후속 승인 UI에서만 호출한다. 이 창 자체는 어떤 키도 신뢰/저장하지 않는다.
+    func beginPairingMode() {
+        pairingUntil = Date().addingTimeInterval(Self.pairingDuration)
     }
 
-    private func ensureRelayKeyAndShare() {
-        let key: String
-        if let existing = relayKey {
-            key = existing
-        } else {
-            key = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
-            UserDefaults.standard.set(key, forKey: Self.relayKeyDefaults)
+    private func requestApproval(forKey key: String, message: SyncMessage) {
+        guard !trustedConnectionKeys.contains(key),
+              !pendingApprovalKeys.contains(key) else { return }
+        pendingApprovalKeys.insert(key)
+        let peerName = message.name ?? "Mac"
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = L10n.t(.connectionRequest)
+            alert.informativeText = String(format: L10n.t(.connectionRequestBody), peerName)
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: L10n.t(.approve))
+            alert.addButton(withTitle: L10n.t(.reject))
+            let approved = alert.runModal() == .alertFirstButtonReturn
+            self.netQueue.async {
+                self.pendingApprovalKeys.remove(key)
+                guard self.connections[key] != nil else { return }
+                if approved {
+                    self.trustedConnectionKeys.insert(key)
+                    DispatchQueue.main.async {
+                        guard self.enabled else { return }
+                        if let cur = InputSourceManager.current() {
+                            self.send(session: self.localViewerActive)
+                            self.send(input: cur)
+                        }
+                    }
+                } else {
+                    self.connections[key]?.cancel()
+                }
+            }
         }
-        relay.configure(key: key)
-        send(pairKey: key)
-    }
-
-    private func mergePairKey(_ theirs: String) {
-        let merged = relayKey.map { min($0, theirs) } ?? theirs
-        guard merged != relayKey else { return }
-        UserDefaults.standard.set(merged, forKey: Self.relayKeyDefaults)
-        relay.configure(key: merged)
-        send(pairKey: merged) // 상대도 같은 키로 수렴하도록 재전송
     }
 
     // MARK: - 네트워크 파라미터 (저지연 튜닝)
@@ -435,9 +438,10 @@ final class SyncEngine {
                 self.recountPeers()
                 DispatchQueue.main.async {
                     // 이름 소개 (피어 목록·고유 카운트용)
-                    self.push(SyncMessage(origin: self.instanceID, kind: "hello", name: self.hostName), viaRelay: false)
-                    // 릴레이 키 합의·공유 (직접 연결이 생겼을 때)
-                    self.ensureRelayKeyAndShare()
+                    self.push(
+                        SyncMessage(origin: self.instanceID, kind: .hello, name: self.hostName),
+                        requiresTrust: false
+                    )
                     // 내가 원격 세션 중이면 새 피어에게 즉시 알림 + 상태 정렬
                     if self.localViewerActive {
                         self.send(session: true)
@@ -448,6 +452,9 @@ final class SyncEngine {
                 self.netQueue.async {
                     if self.connections[key] === conn {
                         self.connections.removeValue(forKey: key)
+                        self.messageTimesByKey.removeValue(forKey: key)
+                        self.trustedConnectionKeys.remove(key)
+                        self.pendingApprovalKeys.remove(key)
                         if let origin = self.originByKey.removeValue(forKey: key),
                            !self.originByKey.values.contains(origin) {
                             DispatchQueue.main.async {
@@ -476,6 +483,7 @@ final class SyncEngine {
             var keyByOrigin: [String: String] = [:] // origin → 대표 연결 key
             for (key, conn) in self.connections {
                 guard case .ready = conn.state else { continue }
+                guard self.trustedConnectionKeys.contains(key) else { continue }
                 guard let origin = self.originByKey[key] else { continue }
                 // 경로 우선순위: 같은 네트워크 > Tailscale > 수신
                 if let existing = keyByOrigin[origin] {
@@ -504,10 +512,27 @@ final class SyncEngine {
             guard let self else { return }
             var buf = buffer
             if let data { buf.append(data) }
+            guard buf.count <= ProtocolSecurity.maxBufferBytes else {
+                conn.cancel()
+                return
+            }
             while let newlineIndex = buf.firstIndex(of: 0x0A) {
                 let line = buf.prefix(upTo: newlineIndex)
                 buf = Data(buf.suffix(from: buf.index(after: newlineIndex)))
-                if let msg = try? JSONDecoder().decode(SyncMessage.self, from: line) {
+                guard line.count <= ProtocolSecurity.maxMessageBytes else {
+                    conn.cancel()
+                    return
+                }
+                if let msg = ProtocolSecurity.decode(Data(line)) {
+                    let now = Date()
+                    var recent = self.messageTimesByKey[key, default: []]
+                        .filter { now.timeIntervalSince($0) < 1 }
+                    guard recent.count < 30 else {
+                        conn.cancel()
+                        return
+                    }
+                    recent.append(now)
+                    self.messageTimesByKey[key] = recent
                     self.handle(msg, fromKey: key)
                 }
             }

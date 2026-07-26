@@ -13,10 +13,15 @@ mkdir -p "$APP/Contents/MacOS"
 cp .build/release/HangulSync "$APP/Contents/MacOS/HangulSync"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
-# 최신 git 태그가 있으면 앱 버전으로 주입 (업데이트 확인 기능이 비교에 사용)
-GIT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+# 정상 SemVer 태그만 앱 버전으로 주입한다.
+GIT_TAG=$(git tag --merged HEAD --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+GIT_VERSION="${GIT_TAG#v}"
 if [ -n "$GIT_VERSION" ]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $GIT_VERSION" "$APP/Contents/Info.plist" 2>/dev/null || true
+    # 숫자 빌드 번호는 해당 SemVer 태그까지의 커밋 수로 단조 증가시킨다.
+    BUILD_NUMBER=$(git rev-list --count HEAD)
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist" 2>/dev/null || true
 fi
 
 # 앱 아이콘 (.icns 생성)

@@ -13,12 +13,38 @@ cd "$(dirname "$0")"
 
 MSG="$1"
 VERSION="$2"
+SEMVER_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'
 
 if [ -z "$MSG" ]; then
     echo "❌ 커밋 메시지가 필요합니다."
     echo "   예) ./deploy.sh \"Fix reconnect bug\""
     echo "   예) ./deploy.sh \"Add feature\" auto     (패치버전 자동 증가 + 릴리즈)"
     echo "   예) ./deploy.sh \"Add feature\" v1.1.0   (버전 지정 + 릴리즈)"
+    exit 1
+fi
+
+# 태그를 만들기 전에, 그리고 커밋/푸시 같은 외부 변경 전에 형식을 검증한다.
+if [ -n "$VERSION" ] && [ "$VERSION" != "auto" ] && ! printf '%s\n' "$VERSION" | grep -Eq "$SEMVER_PATTERN"; then
+    echo "❌ 잘못된 릴리스 버전: $VERSION"
+    echo "   vMAJOR.MINOR.PATCH 형식만 허용합니다 (예: v1.2.3)."
+    exit 1
+fi
+
+# 자동 버전도 외부 변경 전에 계산하고 중복 여부를 확인한다.
+if [ "$VERSION" = "auto" ]; then
+    LATEST=$(git tag --merged HEAD --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname \
+        | grep -E "$SEMVER_PATTERN" | head -1)
+    LATEST="${LATEST:-v1.0.0}"
+    BASE="${LATEST#v}"
+    MAJOR=$(printf '%s\n' "$BASE" | cut -d. -f1)
+    MINOR=$(printf '%s\n' "$BASE" | cut -d. -f2)
+    PATCH=$(printf '%s\n' "$BASE" | cut -d. -f3)
+    VERSION="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+    echo "  ℹ️ 자동 버전: $VERSION (이전: $LATEST)"
+fi
+
+if [ -n "$VERSION" ] && git rev-parse --verify --quiet "refs/tags/$VERSION" >/dev/null; then
+    echo "❌ 태그가 이미 존재합니다: $VERSION"
     exit 1
 fi
 
@@ -51,20 +77,9 @@ if [ -z "$VERSION" ]; then
     exit 0
 fi
 
-# 버전 자동 증가 (auto): 최신 태그의 패치 번호 +1
-if [ "$VERSION" = "auto" ]; then
-    LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-    BASE="${LATEST#v}"
-    MAJOR=$(echo "$BASE" | cut -d. -f1)
-    MINOR=$(echo "$BASE" | cut -d. -f2)
-    PATCH=$(echo "$BASE" | cut -d. -f3)
-    # 태그가 하나도 없었으면 v1.0.0 그대로, 있으면 패치 +1
-    if git rev-parse "$LATEST" >/dev/null 2>&1; then
-        VERSION="v${MAJOR}.${MINOR}.$((PATCH + 1))"
-    else
-        VERSION="v1.0.0"
-    fi
-    echo "  ℹ️ 자동 버전: $VERSION (이전: $LATEST)"
+if ! printf '%s\n' "$VERSION" | grep -Eq "$SEMVER_PATTERN"; then
+    echo "❌ 내부 오류: 생성된 버전이 SemVer가 아닙니다: $VERSION"
+    exit 1
 fi
 
 echo "▸ 4/4 태그 $VERSION 푸시 → GitHub Actions가 자동 릴리즈..."
