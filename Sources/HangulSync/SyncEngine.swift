@@ -28,9 +28,11 @@ final class SyncEngine {
     private static let sessionTTL: TimeInterval = 600      // 원격 세션 신호 유효시간
     private static let sessionRefresh: TimeInterval = 240  // 세션 유지 재전송 주기
     private static let onlyRemoteDefaults = "OnlyDuringRemote"
+    private static let deviceIDDefaults = "DeviceID"
+    private static let trustedOriginsDefaults = "TrustedDeviceIDs"
     private static let pairingDuration: TimeInterval = 60
 
-    let instanceID = UUID().uuidString
+    let instanceID: String
     let serviceName: String
 
     private let netQueue = DispatchQueue(label: "hangulsync.network")
@@ -40,7 +42,8 @@ final class SyncEngine {
     private var originByKey: [String: String] = [:]             // netQueue에서만 접근
     private var messageTimesByKey: [String: [Date]] = [:]       // netQueue에서만 접근
     private var trustedConnectionKeys: Set<String> = []         // netQueue에서만 접근
-    private var pendingApprovalKeys: Set<String> = []            // netQueue에서만 접근
+    private var trustedOrigins: Set<String> = []                 // netQueue에서만 접근
+    private var pendingApprovalOrigins: Set<String> = []         // netQueue에서만 접근
     private var lastBonjourResults: Set<NWBrowser.Result> = []  // netQueue에서만 접근
     private var retryTimer: Timer?
     private var pairingUntil = Date.distantPast
@@ -81,12 +84,25 @@ final class SyncEngine {
     var onStateChange: (() -> Void)?
 
     init() {
+        let defaults = UserDefaults.standard
+        let deviceID: String
+        if let saved = defaults.string(forKey: Self.deviceIDDefaults),
+           UUID(uuidString: saved) != nil {
+            deviceID = saved
+        } else {
+            deviceID = UUID().uuidString
+            defaults.set(deviceID, forKey: Self.deviceIDDefaults)
+        }
+        self.instanceID = deviceID
         let host = Host.current().localizedName ?? "Mac"
-        self.serviceName = "\(host)-\(instanceID.prefix(8))"
-        if UserDefaults.standard.object(forKey: Self.onlyRemoteDefaults) == nil {
+        self.serviceName = "\(host)-\(deviceID.prefix(8))"
+        self.trustedOrigins = Set(
+            defaults.stringArray(forKey: Self.trustedOriginsDefaults) ?? []
+        )
+        if defaults.object(forKey: Self.onlyRemoteDefaults) == nil {
             self.onlyDuringRemote = true
         } else {
-            self.onlyDuringRemote = UserDefaults.standard.bool(forKey: Self.onlyRemoteDefaults)
+            self.onlyDuringRemote = defaults.bool(forKey: Self.onlyRemoteDefaults)
         }
     }
 
@@ -193,6 +209,9 @@ final class SyncEngine {
         } else {
             originByKey[key] = msg.origin
         }
+        if trustedOrigins.contains(msg.origin) {
+            trustedConnectionKeys.insert(key)
+        }
         guard ProtocolSecurity.permits(
             msg.kind,
             enabled: enabled,
@@ -202,7 +221,7 @@ final class SyncEngine {
 
         switch msg.kind {
         case .hello:
-            requestApproval(forKey: key, message: msg)
+            requestApproval(for: msg)
             DispatchQueue.main.async {
                 self.namesByOrigin[msg.origin] = msg.name ?? "Mac"
             }
@@ -239,10 +258,11 @@ final class SyncEngine {
         pairingUntil = Date().addingTimeInterval(Self.pairingDuration)
     }
 
-    private func requestApproval(forKey key: String, message: SyncMessage) {
-        guard !trustedConnectionKeys.contains(key),
-              !pendingApprovalKeys.contains(key) else { return }
-        pendingApprovalKeys.insert(key)
+    private func requestApproval(for message: SyncMessage) {
+        let origin = message.origin
+        guard !trustedOrigins.contains(origin),
+              !pendingApprovalOrigins.contains(origin) else { return }
+        pendingApprovalOrigins.insert(origin)
         let peerName = message.name ?? "Mac"
         DispatchQueue.main.async {
             let alert = NSAlert()
@@ -253,10 +273,19 @@ final class SyncEngine {
             alert.addButton(withTitle: L10n.t(.reject))
             let approved = alert.runModal() == .alertFirstButtonReturn
             self.netQueue.async {
-                self.pendingApprovalKeys.remove(key)
-                guard self.connections[key] != nil else { return }
+                self.pendingApprovalOrigins.remove(origin)
+                let matchingKeys = self.originByKey.compactMap { connectionKey, peerOrigin in
+                    peerOrigin == origin ? connectionKey : nil
+                }
+                guard !matchingKeys.isEmpty else { return }
                 if approved {
-                    self.trustedConnectionKeys.insert(key)
+                    self.trustedOrigins.insert(origin)
+                    UserDefaults.standard.set(
+                        self.trustedOrigins.sorted(),
+                        forKey: Self.trustedOriginsDefaults
+                    )
+                    self.trustedConnectionKeys.formUnion(matchingKeys)
+                    self.recountPeers()
                     DispatchQueue.main.async {
                         guard self.enabled else { return }
                         if let cur = InputSourceManager.current() {
@@ -265,7 +294,9 @@ final class SyncEngine {
                         }
                     }
                 } else {
-                    self.connections[key]?.cancel()
+                    for connectionKey in matchingKeys {
+                        self.connections[connectionKey]?.cancel()
+                    }
                 }
             }
         }
@@ -454,7 +485,6 @@ final class SyncEngine {
                         self.connections.removeValue(forKey: key)
                         self.messageTimesByKey.removeValue(forKey: key)
                         self.trustedConnectionKeys.remove(key)
-                        self.pendingApprovalKeys.remove(key)
                         if let origin = self.originByKey.removeValue(forKey: key),
                            !self.originByKey.values.contains(origin) {
                             DispatchQueue.main.async {
