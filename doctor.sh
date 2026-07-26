@@ -18,7 +18,17 @@ echo "===== 5. Gatekeeper 격리 속성 (com.apple.quarantine이 있으면 차�
 xattr "$APP" 2>&1
 echo
 echo "===== 6. 최근 크래시 리포트"
-ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i hangul | head -3 || echo "없음"
+shopt -s nullglob nocaseglob
+crash_reports=("$HOME"/Library/Logs/DiagnosticReports/*hangul*)
+shopt -u nullglob nocaseglob
+if ((${#crash_reports[@]})); then
+    stat -f '%m %N' "${crash_reports[@]}" |
+        sort -rn |
+        head -3 |
+        cut -d' ' -f2-
+else
+    echo "없음"
+fi
 echo
 echo "===== 7. 직접 실행 테스트"
 echo "지금부터 앱을 터미널에서 직접 실행합니다."
