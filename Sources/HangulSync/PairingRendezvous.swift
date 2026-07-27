@@ -41,7 +41,7 @@ struct PairingRendezvousKeyMaterial {
         let salt = Data("HangulSync remote pairing v1".utf8)
         let topicKey = HKDF<SHA256>.deriveKey(
             inputKeyMaterial: input, salt: salt,
-            info: Data("topic".utf8), outputByteCount: 32
+            info: Data("topic".utf8), outputByteCount: 24
         )
         contentKey = HKDF<SHA256>.deriveKey(
             inputKeyMaterial: input, salt: salt,

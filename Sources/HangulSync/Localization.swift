@@ -54,7 +54,7 @@ enum L10n {
             .forgetDevice: "Forget",
             .resetPairings: "Reset All Pairings",
             .alwaysTrustDevice: "Always trust this device",
-            .remotePairingChoice: "Create an invite on one Mac, then enter it on the other. Nearby Macs are also discovered automatically.",
+            .remotePairingChoice: "HangulSync is searching automatically. If the other Mac is not found, create or enter an invite code.",
             .createInvite: "Create Invite",
             .enterInvite: "Enter Invite",
             .cancel: "Cancel",
@@ -100,7 +100,7 @@ enum L10n {
             .forgetDevice: "기기 삭제",
             .resetPairings: "모든 페어링 초기화",
             .alwaysTrustDevice: "이 기기를 계속 신뢰",
-            .remotePairingChoice: "한쪽 Mac에서 초대 코드를 만들고 다른 Mac에 입력하세요. 가까운 Mac은 자동으로도 탐색합니다.",
+            .remotePairingChoice: "기기를 자동으로 찾고 있습니다. 상대 Mac이 나타나지 않으면 초대 코드를 만들거나 입력하세요.",
             .createInvite: "초대 코드 만들기",
             .enterInvite: "초대 코드 입력",
             .cancel: "취소",
@@ -137,7 +137,7 @@ enum L10n {
         ],
         "ja": [
             .alwaysTrustDevice: "このデバイスを常に信頼する",
-            .remotePairingChoice: "一方の Mac で招待コードを作成し、もう一方に入力してください。近くの Mac は自動的にも検出されます。",
+            .remotePairingChoice: "デバイスを自動検索中です。見つからない場合は招待コードを作成または入力してください。",
             .createInvite: "招待コードを作成",
             .enterInvite: "招待コードを入力",
             .cancel: "キャンセル",
@@ -179,7 +179,7 @@ enum L10n {
         ],
         "zh-Hans": [
             .alwaysTrustDevice: "始终信任此设备",
-            .remotePairingChoice: "在一台 Mac 上创建邀请码，然后在另一台输入。附近的 Mac 也会自动发现。",
+            .remotePairingChoice: "正在自动查找设备。如果找不到另一台 Mac，请创建或输入邀请码。",
             .createInvite: "创建邀请码",
             .enterInvite: "输入邀请码",
             .cancel: "取消",
@@ -221,7 +221,7 @@ enum L10n {
         ],
         "zh-Hant": [
             .alwaysTrustDevice: "永遠信任此裝置",
-            .remotePairingChoice: "在一台 Mac 建立邀請碼，再於另一台輸入。附近的 Mac 也會自動探索。",
+            .remotePairingChoice: "正在自動尋找裝置。如果找不到另一台 Mac，請建立或輸入邀請碼。",
             .createInvite: "建立邀請碼",
             .enterInvite: "輸入邀請碼",
             .cancel: "取消",
@@ -263,7 +263,7 @@ enum L10n {
         ],
         "th": [
             .alwaysTrustDevice: "เชื่อถืออุปกรณ์นี้เสมอ",
-            .remotePairingChoice: "สร้างรหัสเชิญบน Mac เครื่องหนึ่ง แล้วกรอกบนอีกเครื่อง Mac ที่อยู่ใกล้จะถูกค้นหาอัตโนมัติด้วย",
+            .remotePairingChoice: "กำลังค้นหาอุปกรณ์อัตโนมัติ หากไม่พบ Mac อีกเครื่อง ให้สร้างหรือกรอกรหัสเชิญ",
             .createInvite: "สร้างรหัสเชิญ",
             .enterInvite: "กรอกรหัสเชิญ",
             .cancel: "ยกเลิก",
@@ -305,7 +305,7 @@ enum L10n {
         ],
         "ru": [
             .alwaysTrustDevice: "Всегда доверять этому устройству",
-            .remotePairingChoice: "Создайте приглашение на одном Mac и введите его на другом. Mac поблизости также обнаруживаются автоматически.",
+            .remotePairingChoice: "Идёт автоматический поиск устройств. Если другой Mac не найден, создайте или введите приглашение.",
             .createInvite: "Создать приглашение",
             .enterInvite: "Ввести приглашение",
             .cancel: "Отмена",
@@ -347,7 +347,7 @@ enum L10n {
         ],
         "it": [
             .alwaysTrustDevice: "Considera sempre attendibile questo dispositivo",
-            .remotePairingChoice: "Crea un invito su un Mac e inseriscilo sull'altro. I Mac vicini vengono rilevati anche automaticamente.",
+            .remotePairingChoice: "Ricerca automatica dei dispositivi. Se l'altro Mac non appare, crea o inserisci un invito.",
             .createInvite: "Crea invito",
             .enterInvite: "Inserisci invito",
             .cancel: "Annulla",

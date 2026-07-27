@@ -35,6 +35,7 @@ final class SecurePairingTests: XCTestCase {
         )
 
         XCTAssertEqual(firstMaterial.topic, secondMaterial.topic)
+        XCTAssertLessThanOrEqual("hangulsync-\(firstMaterial.topic)".count, 64)
         let firstContent = firstMaterial.contentKey.withUnsafeBytes { Data($0) }
         let secondContent = secondMaterial.contentKey.withUnsafeBytes { Data($0) }
         XCTAssertEqual(firstContent, secondContent)
@@ -62,7 +63,8 @@ final class SecurePairingTests: XCTestCase {
         let material = PairingRendezvousKeyMaterial(secret: Data(repeating: 0x23, count: 32))
         let content = material.contentKey.withUnsafeBytes { Data($0) }
 
-        XCTAssertEqual(material.topic.count, 64)
+        XCTAssertEqual(material.topic.count, 48)
+        XCTAssertLessThanOrEqual("hangulsync-pair-\(material.topic)".count, 64)
         XCTAssertNotEqual(Data(hex: material.topic), content)
     }
 }

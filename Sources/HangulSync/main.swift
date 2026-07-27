@@ -483,12 +483,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func startPairing() {
+        engine.beginPairingMode()
         let alert = NSAlert()
         alert.messageText = L10n.t(.pairNewMac)
         alert.informativeText = L10n.t(.remotePairingChoice)
         alert.addButton(withTitle: L10n.t(.createInvite))
         alert.addButton(withTitle: L10n.t(.enterInvite))
-        alert.addButton(withTitle: L10n.t(.nearbyPairing))
+        alert.addButton(withTitle: L10n.t(.cancel))
         switch alert.runModal() {
         case .alertFirstButtonReturn:
             guard let invite = engine.createRemotePairingInvite() else { return }
@@ -507,12 +508,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 target: self,
                 action: #selector(copyPairingInvite)
             )
-            let row = NSStackView(views: [field, copyButton])
-            row.orientation = .horizontal
-            row.spacing = 8
-            row.frame = NSRect(x: 0, y: 0, width: 480, height: 28)
-            field.widthAnchor.constraint(equalToConstant: 365).isActive = true
-            result.accessoryView = row
+            let container = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 30))
+            field.frame = NSRect(x: 0, y: 2, width: 310, height: 26)
+            copyButton.frame = NSRect(x: 320, y: 0, width: 80, height: 30)
+            container.addSubview(field)
+            container.addSubview(copyButton)
+            result.accessoryView = container
             result.addButton(withTitle: L10n.t(.approve))
             result.runModal()
         case .alertSecondButtonReturn:
@@ -535,12 +536,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 target: self,
                 action: #selector(pastePairingInvite)
             )
-            let row = NSStackView(views: [field, pasteButton])
-            row.orientation = .horizontal
-            row.spacing = 8
-            row.frame = NSRect(x: 0, y: 0, width: 480, height: 28)
-            field.widthAnchor.constraint(equalToConstant: 365).isActive = true
-            input.accessoryView = row
+            let container = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 30))
+            field.frame = NSRect(x: 0, y: 2, width: 310, height: 26)
+            pasteButton.frame = NSRect(x: 320, y: 0, width: 80, height: 30)
+            container.addSubview(field)
+            container.addSubview(pasteButton)
+            input.accessoryView = container
             input.addButton(withTitle: L10n.t(.join))
             input.addButton(withTitle: L10n.t(.cancel))
             input.window.initialFirstResponder = field
@@ -554,7 +555,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 error.runModal()
             }
         default:
-            engine.beginPairingMode()
+            break
         }
     }
 

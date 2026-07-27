@@ -25,7 +25,7 @@ struct RelayKeyMaterial {
             using: SHA256.self,
             salt: salt,
             sharedInfo: Data("topic:\(ids)".utf8),
-            outputByteCount: 32
+            outputByteCount: 24
         )
         contentKey = sharedSecret.hkdfDerivedSymmetricKey(
             using: SHA256.self,
