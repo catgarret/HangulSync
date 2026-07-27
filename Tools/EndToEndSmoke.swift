@@ -15,6 +15,7 @@ enum EndToEndSmoke {
 
         firstPairing.onPeer = { key, _, approved in
             guard key == secondIdentity.publicKeyBase64 else { return }
+            print("FIRST_RECEIVED", approved ? "APPROVED" : "HELLO")
             if approved {
                 firstApproved.signal()
             } else {
@@ -26,6 +27,7 @@ enum EndToEndSmoke {
         }
         secondPairing.onPeer = { key, _, approved in
             guard key == firstIdentity.publicKeyBase64 else { return }
+            print("SECOND_RECEIVED", approved ? "APPROVED" : "HELLO")
             if approved {
                 secondApproved.signal()
             } else {

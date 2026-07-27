@@ -69,6 +69,7 @@ private struct RendezvousCiphertext: Codable {
 /// 토픽과 본문은 초대장 속 256-bit 비밀값에서 HKDF로 각각 분리한다.
 final class PairingRendezvous: NSObject, URLSessionDataDelegate {
     var onPeer: ((String, String, Bool) -> Void)?
+    var onError: ((Int) -> Void)?
 
     private let lock = NSLock()
     private var task: URLSessionDataTask?
@@ -77,6 +78,7 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
     private var topic: String?
     private var acceptedNonces: Set<String> = []
     private var generation = UUID()
+    private var errorReported = false
 
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -115,7 +117,7 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
             nonce: UUID().uuidString,
             approved: false
         )
-        for delay in [0.4, 1.5, 3.0] {
+        for delay in [0.4, 2.0, 6.0] {
             DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
                 self?.publish(peer, material: material)
             }
@@ -134,7 +136,7 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
             nonce: UUID().uuidString,
             approved: true
         )
-        for delay in [0.0, 0.8, 2.0] {
+        for delay in [0.0, 1.5, 5.0] {
             DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
                 self?.publish(peer, topic: topic, key: key)
             }
@@ -150,6 +152,7 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
         topic = nil
         buffer.removeAll()
         acceptedNonces.removeAll()
+        errorReported = false
         lock.unlock()
         oldTask?.cancel()
     }
@@ -195,7 +198,19 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
         request.setValue("no", forHTTPHeaderField: "X-Cache")
         request.setValue("no", forHTTPHeaderField: "X-Firebase")
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        session.dataTask(with: request).resume()
+        session.dataTask(with: request) { [weak self] _, response, error in
+            let status = (response as? HTTPURLResponse)?.statusCode ?? (error == nil ? 0 : -1)
+            guard !(200..<300).contains(status) else { return }
+            self?.reportError(status: status)
+        }.resume()
+    }
+
+    private func reportError(status: Int) {
+        lock.lock()
+        guard !errorReported else { lock.unlock(); return }
+        errorReported = true
+        lock.unlock()
+        onError?(status)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {

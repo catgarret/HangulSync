@@ -15,6 +15,7 @@ enum L10n {
         case copyInvite, pasteInvite, invitePlaceholder
         case pairingComplete, pairingCompleteBody
         case automaticDiscovery, searchStarted, searchStartedBody
+        case pairingRelayError, pairingRelayErrorBody
     }
 
     private static let lang: String = {
@@ -69,6 +70,8 @@ enum L10n {
             .automaticDiscovery: "Find Automatically",
             .searchStarted: "Searching for Mac",
             .searchStartedBody: "Keep HangulSync open on the other Mac. Only this Mac needs to start the search.",
+            .pairingRelayError: "Internet Pairing Unavailable",
+            .pairingRelayErrorBody: "The public relay rejected the request (HTTP %d). Try Find Automatically with Tailscale, or try the invite again later.",
             .inviteReady: "Pairing Invite Ready",
             .inviteCopied: "The one-time invite was copied. Paste it on the other Mac within 2 minutes.",
             .enterInviteBody: "Paste the invite created on the other Mac.",
@@ -121,6 +124,8 @@ enum L10n {
             .automaticDiscovery: "자동으로 찾기",
             .searchStarted: "Mac을 찾고 있습니다",
             .searchStartedBody: "상대 Mac에서 HangulSync를 실행해 두세요. 탐색 시작은 이 Mac 한쪽에서만 하면 됩니다.",
+            .pairingRelayError: "인터넷 페어링을 사용할 수 없습니다",
+            .pairingRelayErrorBody: "공용 릴레이가 요청을 거절했습니다(HTTP %d). Tailscale에서 자동으로 찾기를 사용하거나 잠시 후 초대 코드를 다시 시도하세요.",
             .inviteReady: "페어링 초대 준비됨",
             .inviteCopied: "일회용 초대 코드가 복사되었습니다. 2분 안에 다른 Mac에 붙여 넣으세요.",
             .enterInviteBody: "다른 Mac에서 만든 초대 코드를 붙여 넣으세요.",
@@ -150,6 +155,8 @@ enum L10n {
             .loginErrorBody: "앱을 /Applications 폴더로 옮긴 뒤 다시 시도해 주세요.",
         ],
         "ja": [
+            .pairingRelayError: "インターネットペアリングを利用できません",
+            .pairingRelayErrorBody: "公開リレーが要求を拒否しました（HTTP %d）。Tailscale で自動検索するか、後でもう一度お試しください。",
             .viaEncryptedRelay: "暗号化リレー",
             .automaticDiscovery: "自動で検索",
             .searchStarted: "Mac を検索中",
@@ -198,6 +205,8 @@ enum L10n {
             .loginErrorBody: "アプリを /Applications フォルダに移動してからもう一度お試しください。",
         ],
         "zh-Hans": [
+            .pairingRelayError: "互联网配对不可用",
+            .pairingRelayErrorBody: "公共中继拒绝了请求（HTTP %d）。请通过 Tailscale 自动查找，或稍后重试。",
             .viaEncryptedRelay: "加密中继",
             .automaticDiscovery: "自动查找",
             .searchStarted: "正在查找 Mac",
@@ -246,6 +255,8 @@ enum L10n {
             .loginErrorBody: "请将应用移动到 /Applications 文件夹后重试。",
         ],
         "zh-Hant": [
+            .pairingRelayError: "網際網路配對無法使用",
+            .pairingRelayErrorBody: "公用中繼拒絕了要求（HTTP %d）。請透過 Tailscale 自動尋找，或稍後再試。",
             .viaEncryptedRelay: "加密中繼",
             .automaticDiscovery: "自動尋找",
             .searchStarted: "正在尋找 Mac",
@@ -294,6 +305,8 @@ enum L10n {
             .loginErrorBody: "請將應用程式移至 /Applications 資料夾後再試一次。",
         ],
         "th": [
+            .pairingRelayError: "ไม่สามารถจับคู่ผ่านอินเทอร์เน็ตได้",
+            .pairingRelayErrorBody: "รีเลย์สาธารณะปฏิเสธคำขอ (HTTP %d) ให้ค้นหาอัตโนมัติผ่าน Tailscale หรือลองใหม่ภายหลัง",
             .viaEncryptedRelay: "รีเลย์เข้ารหัส",
             .automaticDiscovery: "ค้นหาอัตโนมัติ",
             .searchStarted: "กำลังค้นหา Mac",
@@ -342,6 +355,8 @@ enum L10n {
             .loginErrorBody: "ย้ายแอปไปยังโฟลเดอร์ /Applications แล้วลองอีกครั้ง",
         ],
         "ru": [
+            .pairingRelayError: "Интернет-подключение недоступно",
+            .pairingRelayErrorBody: "Публичный ретранслятор отклонил запрос (HTTP %d). Используйте автопоиск через Tailscale или повторите позже.",
             .viaEncryptedRelay: "зашифрованный ретранслятор",
             .automaticDiscovery: "Найти автоматически",
             .searchStarted: "Поиск Mac",
@@ -390,6 +405,8 @@ enum L10n {
             .loginErrorBody: "Переместите приложение в папку /Applications и повторите попытку.",
         ],
         "it": [
+            .pairingRelayError: "Abbinamento Internet non disponibile",
+            .pairingRelayErrorBody: "Il relay pubblico ha rifiutato la richiesta (HTTP %d). Usa la ricerca automatica con Tailscale o riprova più tardi.",
             .viaEncryptedRelay: "relay crittografato",
             .automaticDiscovery: "Trova automaticamente",
             .searchStarted: "Ricerca del Mac",

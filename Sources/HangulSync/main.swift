@@ -42,6 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private var updateButton: NSButton?
     private var pairingInviteToCopy: String?
     private weak var pairingInviteInput: NSTextField?
+    private weak var automaticPairButton: NSButton?
+    private var automaticSearchGeneration = UUID()
 
     // MARK: 설정 창
     private var settingsWindow: NSWindow?
@@ -79,6 +81,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
         engine.onStateChange = { [weak self] in
             DispatchQueue.main.async { self?.refresh() }
+        }
+        engine.onPairingComplete = { [weak self] in
+            self?.finishPairingSearchUI()
+        }
+        engine.onPairingError = { [weak self] status in
+            self?.finishPairingSearchUI()
+            let alert = NSAlert()
+            alert.messageText = L10n.t(.pairingRelayError)
+            alert.informativeText = String(format: L10n.t(.pairingRelayErrorBody), status)
+            alert.alertStyle = .warning
+            alert.runModal()
         }
         engine.start()
         updateChecker.onUpdateFound = { [weak self] in self?.refresh() }
@@ -300,12 +313,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         automaticButton.controlSize = .large
         automaticButton.bezelColor = .controlAccentColor
         automaticButton.contentTintColor = .white
+        automaticPairButton = automaticButton
         let automaticRow = NSStackView(views: [automaticButton])
         automaticRow.orientation = .horizontal
         automaticRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
         automaticButton.widthAnchor.constraint(
             equalToConstant: contentWidth - cardPadding * 2
         ).isActive = true
+
+        let pairingHelp = NSTextField(wrappingLabelWithString: L10n.t(.searchStartedBody))
+        pairingHelp.alignment = .center
+        pairingHelp.font = .systemFont(ofSize: 11)
+        pairingHelp.textColor = .secondaryLabelColor
+        pairingHelp.preferredMaxLayoutWidth = contentWidth - cardPadding * 2
+        let helpRow = NSStackView(views: [pairingHelp])
+        helpRow.orientation = .horizontal
+        helpRow.alignment = .centerY
+        helpRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
 
         let resetButton = NSButton(
             title: L10n.t(.resetPairings),
@@ -322,7 +346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         resetRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
         resetRow.addView(NSView(), in: .leading)
         resetRow.addView(resetButton, in: .trailing)
-        let pairingCard = makeCard([manualRow, automaticRow, resetRow], gap: 8)
+        let pairingCard = makeCard([manualRow, automaticRow, helpRow, resetRow], gap: 8)
 
         // 푸터: 버전 · GitHub · dongri.me
         func linkButton(_ title: String, action: Selector) -> NSButton {
@@ -510,10 +534,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     @objc private func startAutomaticPairing() {
         engine.beginPairingMode()
-        let started = NSAlert()
-        started.messageText = L10n.t(.searchStarted)
-        started.informativeText = L10n.t(.searchStartedBody)
-        started.runModal()
+        automaticPairButton?.title = L10n.t(.searchStarted)
+        automaticPairButton?.isEnabled = false
+        refresh()
+        automaticSearchGeneration = UUID()
+        let generation = automaticSearchGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
+            guard let self, self.automaticSearchGeneration == generation else { return }
+            self.automaticPairButton?.title = L10n.t(.automaticDiscovery)
+            self.automaticPairButton?.isEnabled = true
+            self.refresh()
+        }
+    }
+
+    private func finishPairingSearchUI() {
+        automaticSearchGeneration = UUID()
+        automaticPairButton?.title = L10n.t(.automaticDiscovery)
+        automaticPairButton?.isEnabled = true
+        refresh()
     }
 
     @objc private func createPairingInvite() {

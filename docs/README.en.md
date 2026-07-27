@@ -75,13 +75,15 @@ Requires Xcode Command Line Tools (`xcode-select --install`).
 ## First pairing and Keychain prompt
 
 1. Run HangulSync on both Macs.
-2. Click **Pair New Mac** in Settings on **only one Mac**.
-   Do not click it on both.
-3. Select **Find Automatically** to search Bonjour and Tailscale.
+2. Click **Find Automatically** on **only one Mac**.
+   On the other Mac, just leave HangulSync running; do not click a button or keep a window open.
+3. The searching Mac shows progress,
+   and a connection approval appears automatically on the other Mac.
 4. If discovery fails, select **Create Invite** on either Mac.
    Paste the copied invite into **Enter Invite** on the other Mac within two minutes.
 5. Confirm that both Macs show the same six-digit code, then approve on both.
    Keep **Always trust this device** enabled to skip confirmation in the future.
+   On later launches, the two apps reconnect automatically with no button presses.
 6. If macOS requests access to the login Keychain, verify that the app is HangulSync.
    Enter the current Mac login password and select **Always Allow** or **Allow**.
 

@@ -87,9 +87,9 @@ final class RelayChannel: NSObject, URLSessionDataDelegate {
         if !exists { subscribe(peerID: peerID) }
     }
 
-    func publish(_ message: SyncMessage) {
+    func publish(_ message: SyncMessage, excluding excludedPeerIDs: Set<String> = []) {
         lock.lock()
-        let ids = Array(peers.keys)
+        let ids = peers.keys.filter { !excludedPeerIDs.contains($0) }
         lock.unlock()
         for peerID in ids { publish(message, to: peerID) }
     }
@@ -129,13 +129,7 @@ final class RelayChannel: NSObject, URLSessionDataDelegate {
         request.setValue("no", forHTTPHeaderField: "X-Cache")
         request.setValue("no", forHTTPHeaderField: "X-Firebase")
         request.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        // ntfy 메시지는 캐시하지 않으므로 순간적인 재연결 구간에 유실될 수 있다.
-        // 동일 sequence/nonce의 암호문을 짧게 재전송하고 수신 측 replay 검사로 중복 제거한다.
-        for delay in [0.0, 0.25, 0.8] {
-            DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
-                self?.session.dataTask(with: request).resume()
-            }
-        }
+        session.dataTask(with: request).resume()
     }
 
     private func subscribe(peerID: String) {

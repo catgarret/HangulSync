@@ -44,7 +44,8 @@ final class SyncEngine {
     private static let deviceIDDefaults = "DeviceID"
     private static let trustedOriginsDefaults = "TrustedDeviceIDs"
     private static let peerPublicKeysDefaults = "TrustedPeerPublicKeys"
-    private static let pairingDuration: TimeInterval = 60
+    private static let tailscaleIPsDefaults = "TrustedPeerTailscaleIPs"
+    private static let pairingDuration: TimeInterval = 120
 
     let instanceID: String
     let serviceName: String
@@ -61,6 +62,7 @@ final class SyncEngine {
     private var trustedConnectionKeys: Set<String> = []         // netQueue에서만 접근
     private var trustedOrigins: Set<String> = []                 // netQueue에서만 접근
     private var peerPublicKeys: [String: String] = [:]           // netQueue에서만 접근
+    private var tailscaleIPsByOrigin: [String: String] = [:]     // netQueue에서만 접근
     private var pendingApprovalOrigins: Set<String> = []         // netQueue에서만 접근
     private var localRemoteApprovals: [String: (key: String, persist: Bool, name: String)] = [:]
     private var remoteApprovedOrigins: Set<String> = []
@@ -103,6 +105,8 @@ final class SyncEngine {
 
     /// UI 갱신 콜백 (메인 스레드에서 호출됨)
     var onStateChange: (() -> Void)?
+    var onPairingComplete: (() -> Void)?
+    var onPairingError: ((Int) -> Void)?
 
     init() {
         let defaults = UserDefaults.standard
@@ -123,6 +127,8 @@ final class SyncEngine {
         let host = Host.current().localizedName ?? "Mac"
         self.serviceName = "\(host)-\(deviceID.prefix(8))"
         self.peerPublicKeys = defaults.dictionary(forKey: Self.peerPublicKeysDefaults)?
+            .compactMapValues { $0 as? String } ?? [:]
+        self.tailscaleIPsByOrigin = defaults.dictionary(forKey: Self.tailscaleIPsDefaults)?
             .compactMapValues { $0 as? String } ?? [:]
         self.trustedOrigins = Set(self.peerPublicKeys.keys)
         if defaults.object(forKey: Self.onlyRemoteDefaults) == nil {
@@ -160,6 +166,11 @@ final class SyncEngine {
                 self.finishRemoteApprovalIfReady(origin: origin)
             }
         }
+        rendezvous.onError = { [weak self] status in
+            DispatchQueue.main.async {
+                self?.onPairingError?(status)
+            }
+        }
         if let identity {
             for (peerID, publicKey) in peerPublicKeys {
                 if let secret = identity.sharedSecret(with: publicKey) {
@@ -172,6 +183,7 @@ final class SyncEngine {
         observeViewerApps()
         startListener()
         startBonjourBrowser()
+        netQueue.async { self.connectSavedTailscalePeers() }
         startTimer()
     }
 
@@ -249,13 +261,17 @@ final class SyncEngine {
         guard var data = try? JSONEncoder().encode(msg) else { return }
         data.append(0x0A) // "\n"
         netQueue.async {
+            var directPeerIDs: Set<String> = []
             for (key, conn) in self.connections {
                 guard case .ready = conn.state else { continue }
                 guard !requiresTrust || self.trustedConnectionKeys.contains(key) else { continue }
+                if let origin = self.originByKey[key] { directPeerIDs.insert(origin) }
                 conn.send(content: data, completion: .contentProcessed { _ in })
             }
+            if requiresTrust {
+                self.relay.publish(msg, excluding: directPeerIDs)
+            }
         }
-        if requiresTrust { relay.publish(msg) }
     }
 
     // MARK: - 메시지 수신 (netQueue에서 호출)
@@ -283,6 +299,7 @@ final class SyncEngine {
         }
         if trustedOrigins.contains(msg.origin) {
             trustedConnectionKeys.insert(key)
+            rememberTailscaleIP(from: key, for: msg.origin)
         }
         guard ProtocolSecurity.permits(
             msg.kind,
@@ -324,7 +341,7 @@ final class SyncEngine {
             }
         case .pair:
             // 1차 긴급 수정: 페어링 UI/상호 인증이 완성되기 전에는 키를
-            // 저장하거나 응답하지 않는다. 명시적 60초 창도 후속 승인 흐름 전용이다.
+            // 저장하거나 응답하지 않는다. 명시적 120초 창도 후속 승인 흐름 전용이다.
             return
         case .input:
             guard let sourceID = msg.sourceID else { return }
@@ -389,6 +406,7 @@ final class SyncEngine {
         netQueue.async {
             self.trustedOrigins.remove(id)
             self.peerPublicKeys.removeValue(forKey: id)
+            self.tailscaleIPsByOrigin.removeValue(forKey: id)
             self.persistTrustedPeers()
             self.relay.remove(peerID: id)
             for (key, origin) in self.originByKey where origin == id {
@@ -403,6 +421,7 @@ final class SyncEngine {
             let peerIDs = Array(self.peerPublicKeys.keys)
             self.trustedOrigins.removeAll()
             self.peerPublicKeys.removeAll()
+            self.tailscaleIPsByOrigin.removeAll()
             self.persistTrustedPeers()
             for peerID in peerIDs { self.relay.remove(peerID: peerID) }
             for connection in self.connections.values { connection.cancel() }
@@ -416,6 +435,7 @@ final class SyncEngine {
             forKey: Self.trustedOriginsDefaults
         )
         UserDefaults.standard.set(peerPublicKeys, forKey: Self.peerPublicKeysDefaults)
+        UserDefaults.standard.set(tailscaleIPsByOrigin, forKey: Self.tailscaleIPsDefaults)
     }
 
     private func requestApproval(for message: SyncMessage, allowWithoutConnection: Bool = false) {
@@ -465,6 +485,9 @@ final class SyncEngine {
                     self.trustedOrigins.insert(origin)
                     if persist {
                         self.peerPublicKeys[origin] = publicKey
+                        if let key = matchingKeys.first(where: { $0.hasPrefix("ts-") }) {
+                            self.rememberTailscaleIP(from: key, for: origin)
+                        }
                         self.persistTrustedPeers()
                     }
                     DispatchQueue.main.async {
@@ -476,6 +499,7 @@ final class SyncEngine {
                     self.trustedConnectionKeys.formUnion(matchingKeys)
                     self.recountPeers()
                     DispatchQueue.main.async {
+                        self.onPairingComplete?()
                         guard self.enabled else { return }
                         if let cur = InputSourceManager.current() {
                             self.send(session: self.localViewerActive)
@@ -511,6 +535,7 @@ final class SyncEngine {
         }
         recountPeers()
         DispatchQueue.main.async {
+            self.onPairingComplete?()
             self.onStateChange?()
             let alert = NSAlert()
             alert.messageText = L10n.t(.pairingComplete)
@@ -648,6 +673,29 @@ final class SyncEngine {
                 }
             }
         }
+    }
+
+    /// Tailscale 상태의 Online 값이 늦게 갱신돼도 이미 신뢰한 Mac에는 바로 재연결한다.
+    private func connectSavedTailscalePeers() {
+        for ip in Set(tailscaleIPsByOrigin.values) {
+            let key = "ts-\(ip)"
+            guard connections[key] == nil else { continue }
+            let connection = NWConnection(
+                host: NWEndpoint.Host(ip),
+                port: NWEndpoint.Port(rawValue: Self.port)!,
+                using: Self.tunedTCPParams()
+            )
+            adopt(connection, key: key)
+        }
+    }
+
+    /// 성공한 직접 경로만 저장한다. 사용자가 신뢰를 해제하면 함께 삭제된다.
+    private func rememberTailscaleIP(from connectionKey: String, for origin: String) {
+        guard connectionKey.hasPrefix("ts-") else { return }
+        let ip = String(connectionKey.dropFirst(3))
+        guard !ip.isEmpty, tailscaleIPsByOrigin[origin] != ip else { return }
+        tailscaleIPsByOrigin[origin] = ip
+        UserDefaults.standard.set(tailscaleIPsByOrigin, forKey: Self.tailscaleIPsDefaults)
     }
 
     /// tailscale CLI 위치를 순서대로 탐색해 `status --json` 실행
