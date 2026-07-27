@@ -64,6 +64,19 @@ Richiede gli Xcode Command Line Tools (`xcode-select --install`).
 1. Al primo avvio, **consenti l'accesso alla rete locale**
 2. Clicca l'icona `⇄한` / `⇄A` nella barra dei menu → attiva **Avvia al login**
 
+## Primo abbinamento e richiesta Keychain
+
+1. Avvia HangulSync su entrambi i Mac.
+2. Premi **Abbina un nuovo Mac** nelle Impostazioni di uno dei due.
+3. Verifica che entrambi mostrino lo stesso codice di sei cifre,
+   quindi approva su entrambi.
+4. Se macOS richiede l'accesso al Keychain di login,
+   verifica che l'app indicata sia HangulSync.
+   Inserisci la password di accesso del Mac e scegli **Consenti sempre** o **Consenti**.
+
+Inserisci la password solo nella finestra Keychain di macOS, non in HangulSync.
+Se annulli, l'abbinamento sicuro e il relay Internet non funzioneranno.
+
 ## Barra dei menu
 
 | Icona | Significato |

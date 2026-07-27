@@ -17,6 +17,7 @@ struct SyncMessage: Codable {
     var relayKey: String? = nil
     var name: String? = nil
     var publicKey: String? = nil
+    var pairingRequest: Bool? = nil
 }
 
 enum ProtocolSecurity {
@@ -56,14 +57,17 @@ enum ProtocolSecurity {
             return message.sourceID != nil
                 && message.sessionActive == nil && message.relayKey == nil
                 && message.name == nil && message.publicKey == nil
+                && message.pairingRequest == nil
         case .session:
             return message.sessionActive != nil
                 && message.sourceID == nil && message.isKorean == nil
-                && message.relayKey == nil && message.name == nil && message.publicKey == nil
+                && message.relayKey == nil && message.name == nil
+                && message.publicKey == nil && message.pairingRequest == nil
         case .pair:
             return message.relayKey != nil
                 && message.sourceID == nil && message.isKorean == nil
-                && message.sessionActive == nil && message.name == nil && message.publicKey == nil
+                && message.sessionActive == nil && message.name == nil
+                && message.publicKey == nil && message.pairingRequest == nil
         }
     }
 

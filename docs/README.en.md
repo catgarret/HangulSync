@@ -72,6 +72,17 @@ Requires Xcode Command Line Tools (`xcode-select --install`).
 1. On first launch, **allow Local Network access** when prompted.
 2. Click the `⇄한` / `⇄A` menu bar icon → enable **Launch at Login**.
 
+## First pairing and Keychain prompt
+
+1. Run HangulSync on both Macs.
+2. Click **Pair New Mac** in Settings on either Mac.
+3. Confirm that both Macs show the same six-digit code, then approve on both.
+4. If macOS requests access to the login Keychain, verify that the app is HangulSync.
+   Enter the current Mac login password and select **Always Allow** or **Allow**.
+
+Enter the password only in the macOS Keychain dialog, never in a HangulSync window.
+Cancelling the prompt prevents secure pairing and the internet relay from working.
+
 ## Menu bar
 
 | Icon | Meaning |

@@ -259,7 +259,7 @@ final class SyncEngine {
 
         switch msg.kind {
         case .hello:
-            if Date() < pairingUntil,
+            if msg.pairingRequest == true,
                !trustedOrigins.contains(msg.origin),
                pairingHelloRepliedOrigins.insert(msg.origin).inserted {
                 push(
@@ -267,7 +267,8 @@ final class SyncEngine {
                         origin: instanceID,
                         kind: .hello,
                         name: hostName,
-                        publicKey: identity?.publicKeyBase64
+                        publicKey: identity?.publicKeyBase64,
+                        pairingRequest: true
                     ),
                     requiresTrust: false
                 )
@@ -314,7 +315,8 @@ final class SyncEngine {
                     origin: self.instanceID,
                     kind: .hello,
                     name: self.hostName,
-                    publicKey: self.identity?.publicKeyBase64
+                    publicKey: self.identity?.publicKeyBase64,
+                    pairingRequest: true
                 ),
                 requiresTrust: false
             )
@@ -357,7 +359,7 @@ final class SyncEngine {
         guard let publicKey = message.publicKey,
               let identity,
               let confirmationCode = identity.confirmationCode(with: publicKey),
-              Date() < pairingUntil
+              message.pairingRequest == true
         else { return }
         guard !trustedOrigins.contains(origin),
               !pendingApprovalOrigins.contains(origin) else { return }
@@ -579,7 +581,8 @@ final class SyncEngine {
                             origin: self.instanceID,
                             kind: .hello,
                             name: self.hostName,
-                            publicKey: self.identity?.publicKeyBase64
+                            publicKey: self.identity?.publicKeyBase64,
+                            pairingRequest: false
                         ),
                         requiresTrust: false
                     )
