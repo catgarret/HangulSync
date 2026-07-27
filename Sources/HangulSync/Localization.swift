@@ -6,13 +6,15 @@ enum L10n {
         case connectedMacs, pauseSync, resumeSync, launchAtLogin, quit
         case loginErrorTitle, loginErrorBody, onlyDuringRemote, showInDock, settings
         case tagline, statusSyncing, statusStandby, statusPaused, dockHint
-        case viaLocalNetwork, viaTailscale, viaIncoming, noPeers, statusNotConnected, updateAvailable
+        case viaLocalNetwork, viaTailscale, viaIncoming, viaEncryptedRelay, noPeers, statusNotConnected, updateAvailable
         case connectionRequest, connectionRequestBody, approve, reject
         case pairNewMac, pairingCode, pairingHint
         case forgetDevice, resetPairings
         case alwaysTrustDevice, remotePairingChoice, createInvite, enterInvite
         case cancel, nearbyPairing, inviteReady, inviteCopied, enterInviteBody, join, invalidInvite
         case copyInvite, pasteInvite, invitePlaceholder
+        case pairingComplete, pairingCompleteBody
+        case automaticDiscovery, searchStarted, searchStartedBody
     }
 
     private static let lang: String = {
@@ -62,6 +64,11 @@ enum L10n {
             .copyInvite: "Copy",
             .pasteInvite: "Paste",
             .invitePlaceholder: "Paste the invite code here",
+            .pairingComplete: "Pairing Complete",
+            .pairingCompleteBody: "%@ is trusted and will reconnect automatically.",
+            .automaticDiscovery: "Find Automatically",
+            .searchStarted: "Searching for Mac",
+            .searchStartedBody: "Keep HangulSync open on the other Mac. Only this Mac needs to start the search.",
             .inviteReady: "Pairing Invite Ready",
             .inviteCopied: "The one-time invite was copied. Paste it on the other Mac within 2 minutes.",
             .enterInviteBody: "Paste the invite created on the other Mac.",
@@ -72,6 +79,7 @@ enum L10n {
             .viaLocalNetwork: "local network",
             .viaTailscale: "Tailscale",
             .viaIncoming: "incoming",
+            .viaEncryptedRelay: "encrypted relay",
             .noPeers: "No Macs found yet",
             .tagline: "Fixes Hangul jamo separation over remote desktop.\nInput state syncs automatically between Macs.",
             .statusSyncing: "Active — Korean/English switching is synced with connected Macs",
@@ -108,6 +116,11 @@ enum L10n {
             .copyInvite: "복사",
             .pasteInvite: "붙여넣기",
             .invitePlaceholder: "초대 코드를 여기에 붙여 넣으세요",
+            .pairingComplete: "페어링 완료",
+            .pairingCompleteBody: "%@ 기기를 신뢰했습니다. 다음부터 자동으로 연결됩니다.",
+            .automaticDiscovery: "자동으로 찾기",
+            .searchStarted: "Mac을 찾고 있습니다",
+            .searchStartedBody: "상대 Mac에서 HangulSync를 실행해 두세요. 탐색 시작은 이 Mac 한쪽에서만 하면 됩니다.",
             .inviteReady: "페어링 초대 준비됨",
             .inviteCopied: "일회용 초대 코드가 복사되었습니다. 2분 안에 다른 Mac에 붙여 넣으세요.",
             .enterInviteBody: "다른 Mac에서 만든 초대 코드를 붙여 넣으세요.",
@@ -118,6 +131,7 @@ enum L10n {
             .viaLocalNetwork: "같은 네트워크",
             .viaTailscale: "Tailscale",
             .viaIncoming: "수신 연결",
+            .viaEncryptedRelay: "암호화 릴레이",
             .noPeers: "아직 발견된 Mac 없음",
             .tagline: "원격 데스크탑 연결 시 한글 자소 분리를 해결합니다.\n한·영 입력 상태가 Mac 간 자동으로 동기화됩니다.",
             .statusSyncing: "작동 중 — 연결된 Mac과 한·영 전환이 동기화됩니다",
@@ -136,6 +150,12 @@ enum L10n {
             .loginErrorBody: "앱을 /Applications 폴더로 옮긴 뒤 다시 시도해 주세요.",
         ],
         "ja": [
+            .viaEncryptedRelay: "暗号化リレー",
+            .automaticDiscovery: "自動で検索",
+            .searchStarted: "Mac を検索中",
+            .searchStartedBody: "もう一方の Mac で HangulSync を起動したままにしてください。検索開始はこの Mac だけで行います。",
+            .pairingComplete: "ペアリング完了",
+            .pairingCompleteBody: "%@ を信頼しました。次回から自動的に再接続します。",
             .alwaysTrustDevice: "このデバイスを常に信頼する",
             .remotePairingChoice: "片方の Mac でのみ押してください。自動検索で見つからない場合は、招待コードを作成または入力します。",
             .createInvite: "招待コードを作成",
@@ -178,6 +198,12 @@ enum L10n {
             .loginErrorBody: "アプリを /Applications フォルダに移動してからもう一度お試しください。",
         ],
         "zh-Hans": [
+            .viaEncryptedRelay: "加密中继",
+            .automaticDiscovery: "自动查找",
+            .searchStarted: "正在查找 Mac",
+            .searchStartedBody: "请让另一台 Mac 保持 HangulSync 运行。只需在此 Mac 上开始查找。",
+            .pairingComplete: "配对完成",
+            .pairingCompleteBody: "已信任 %@，以后将自动重新连接。",
             .alwaysTrustDevice: "始终信任此设备",
             .remotePairingChoice: "只需在一台 Mac 上点击。应用会自动查找设备，找不到时再创建或输入邀请码。",
             .createInvite: "创建邀请码",
@@ -220,6 +246,12 @@ enum L10n {
             .loginErrorBody: "请将应用移动到 /Applications 文件夹后重试。",
         ],
         "zh-Hant": [
+            .viaEncryptedRelay: "加密中繼",
+            .automaticDiscovery: "自動尋找",
+            .searchStarted: "正在尋找 Mac",
+            .searchStartedBody: "請讓另一台 Mac 保持 HangulSync 執行。只需在此 Mac 開始尋找。",
+            .pairingComplete: "配對完成",
+            .pairingCompleteBody: "已信任 %@，日後將自動重新連線。",
             .alwaysTrustDevice: "永遠信任此裝置",
             .remotePairingChoice: "只需在一台 Mac 上按下。應用程式會自動尋找裝置，找不到時再建立或輸入邀請碼。",
             .createInvite: "建立邀請碼",
@@ -262,6 +294,12 @@ enum L10n {
             .loginErrorBody: "請將應用程式移至 /Applications 資料夾後再試一次。",
         ],
         "th": [
+            .viaEncryptedRelay: "รีเลย์เข้ารหัส",
+            .automaticDiscovery: "ค้นหาอัตโนมัติ",
+            .searchStarted: "กำลังค้นหา Mac",
+            .searchStartedBody: "เปิด HangulSync ไว้บน Mac อีกเครื่อง เริ่มค้นหาจาก Mac เครื่องนี้เพียงเครื่องเดียว",
+            .pairingComplete: "จับคู่สำเร็จ",
+            .pairingCompleteBody: "เชื่อถือ %@ แล้ว และจะเชื่อมต่อใหม่อัตโนมัติ",
             .alwaysTrustDevice: "เชื่อถืออุปกรณ์นี้เสมอ",
             .remotePairingChoice: "กดบน Mac เพียงเครื่องเดียว ระบบจะค้นหาอัตโนมัติ หากไม่พบให้สร้างหรือกรอกรหัสเชิญ",
             .createInvite: "สร้างรหัสเชิญ",
@@ -304,6 +342,12 @@ enum L10n {
             .loginErrorBody: "ย้ายแอปไปยังโฟลเดอร์ /Applications แล้วลองอีกครั้ง",
         ],
         "ru": [
+            .viaEncryptedRelay: "зашифрованный ретранслятор",
+            .automaticDiscovery: "Найти автоматически",
+            .searchStarted: "Поиск Mac",
+            .searchStartedBody: "Оставьте HangulSync запущенным на другом Mac. Запускать поиск нужно только на этом Mac.",
+            .pairingComplete: "Подключение завершено",
+            .pairingCompleteBody: "Устройство %@ добавлено в доверенные и будет подключаться автоматически.",
             .alwaysTrustDevice: "Всегда доверять этому устройству",
             .remotePairingChoice: "Нажмите только на одном Mac. Поиск выполняется автоматически; если устройство не найдено, создайте или введите приглашение.",
             .createInvite: "Создать приглашение",
@@ -346,6 +390,12 @@ enum L10n {
             .loginErrorBody: "Переместите приложение в папку /Applications и повторите попытку.",
         ],
         "it": [
+            .viaEncryptedRelay: "relay crittografato",
+            .automaticDiscovery: "Trova automaticamente",
+            .searchStarted: "Ricerca del Mac",
+            .searchStartedBody: "Lascia HangulSync aperto sull'altro Mac. Avvia la ricerca solo da questo Mac.",
+            .pairingComplete: "Abbinamento completato",
+            .pairingCompleteBody: "%@ è attendibile e si riconnetterà automaticamente.",
             .alwaysTrustDevice: "Considera sempre attendibile questo dispositivo",
             .remotePairingChoice: "Premi su un solo Mac. La ricerca è automatica; se l'altro Mac non appare, crea o inserisci un invito.",
             .createInvite: "Crea invito",

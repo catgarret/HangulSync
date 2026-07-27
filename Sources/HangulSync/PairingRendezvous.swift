@@ -58,6 +58,7 @@ private struct RendezvousPeer: Codable {
     let name: String
     let timestamp: TimeInterval
     let nonce: String
+    let approved: Bool
 }
 
 private struct RendezvousCiphertext: Codable {
@@ -67,7 +68,7 @@ private struct RendezvousCiphertext: Codable {
 /// 120초 동안만 존재하는 ntfy 기반 원격 페어링 채널.
 /// 토픽과 본문은 초대장 속 256-bit 비밀값에서 HKDF로 각각 분리한다.
 final class PairingRendezvous: NSObject, URLSessionDataDelegate {
-    var onPeer: ((String, String) -> Void)?
+    var onPeer: ((String, String, Bool) -> Void)?
 
     private let lock = NSLock()
     private var task: URLSessionDataTask?
@@ -105,13 +106,14 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
         else { return false }
         let material = PairingRendezvousKeyMaterial(secret: secret)
         begin(material: material)
-        onPeer?(invite.publicKey, invite.name)
+        onPeer?(invite.publicKey, invite.name, false)
 
         let peer = RendezvousPeer(
             publicKey: publicKey,
             name: name,
             timestamp: Date().timeIntervalSince1970,
-            nonce: UUID().uuidString
+            nonce: UUID().uuidString,
+            approved: false
         )
         for delay in [0.4, 1.5, 3.0] {
             DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -119,6 +121,24 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
             }
         }
         return true
+    }
+
+    func publishApproval(publicKey: String, name: String) {
+        lock.lock()
+        guard let key, let topic else { lock.unlock(); return }
+        lock.unlock()
+        let peer = RendezvousPeer(
+            publicKey: publicKey,
+            name: name,
+            timestamp: Date().timeIntervalSince1970,
+            nonce: UUID().uuidString,
+            approved: true
+        )
+        for delay in [0.0, 0.8, 2.0] {
+            DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.publish(peer, topic: topic, key: key)
+            }
+        }
     }
 
     func cancel() {
@@ -158,12 +178,16 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
     }
 
     private func publish(_ peer: RendezvousPeer, material: PairingRendezvousKeyMaterial) {
+        publish(peer, topic: material.topic, key: material.contentKey)
+    }
+
+    private func publish(_ peer: RendezvousPeer, topic: String, key: SymmetricKey) {
         guard let plain = try? JSONEncoder().encode(peer),
-              let sealed = try? ChaChaPoly.seal(plain, using: material.contentKey),
+              let sealed = try? ChaChaPoly.seal(plain, using: key),
               let body = try? JSONEncoder().encode(
                 RendezvousCiphertext(ciphertext: sealed.combined.base64EncodedString())
               ),
-              let url = URL(string: "https://ntfy.sh/hangulsync-pair-\(material.topic)")
+              let url = URL(string: "https://ntfy.sh/hangulsync-pair-\(topic)")
         else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -204,6 +228,6 @@ final class PairingRendezvous: NSObject, URLSessionDataDelegate {
             peers.append(peer)
         }
         lock.unlock()
-        for peer in peers { onPeer?(peer.publicKey, peer.name) }
+        for peer in peers { onPeer?(peer.publicKey, peer.name, peer.approved) }
     }
 }

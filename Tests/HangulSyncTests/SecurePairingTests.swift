@@ -67,6 +67,25 @@ final class SecurePairingTests: XCTestCase {
         XCTAssertLessThanOrEqual("hangulsync-pair-\(material.topic)".count, 64)
         XCTAssertNotEqual(Data(hex: material.topic), content)
     }
+
+    func testTrustedRelayPeerIsIncludedInConnectedCount() {
+        let inventory = PeerInventory.includingRelayFallbacks(
+            direct: [:],
+            trustedOrigins: ["trusted-device"]
+        )
+
+        XCTAssertEqual(inventory.count, 1)
+        XCTAssertEqual(inventory["trusted-device"], "relay-trusted-device")
+    }
+
+    func testDirectConnectionTakesPriorityOverRelayFallback() {
+        let inventory = PeerInventory.includingRelayFallbacks(
+            direct: ["trusted-device": "ts-100.64.0.1"],
+            trustedOrigins: ["trusted-device"]
+        )
+
+        XCTAssertEqual(inventory["trusted-device"], "ts-100.64.0.1")
+    }
 }
 
 private extension Data {

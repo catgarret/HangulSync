@@ -266,14 +266,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             settingRow(title: L10n.t(.showInDock), subtitle: L10n.t(.dockHint), control: dockSwitch),
         ], gap: 14)
 
-        // 페어링 액션: 주요 동작과 파괴적 동작을 한 행에 분리
-        let pairButton = NSButton(
-            title: L10n.t(.pairNewMac),
+        // 페어링 액션: 수동 방식은 나란히, 자동 탐색은 전체 폭으로 강조
+        let createInviteButton = NSButton(
+            title: L10n.t(.createInvite),
             target: self,
-            action: #selector(startPairing)
+            action: #selector(createPairingInvite)
         )
-        pairButton.bezelStyle = .rounded
-        pairButton.controlSize = .large
+        let enterInviteButton = NSButton(
+            title: L10n.t(.enterInvite),
+            target: self,
+            action: #selector(enterPairingInvite)
+        )
+        for button in [createInviteButton, enterInviteButton] {
+            button.bezelStyle = .rounded
+            button.controlSize = .regular
+        }
+
+        let manualRow = NSStackView(views: [createInviteButton, enterInviteButton])
+        manualRow.orientation = .horizontal
+        manualRow.distribution = .fillEqually
+        manualRow.spacing = 8
+        manualRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
+        let manualButtonWidth = (contentWidth - cardPadding * 2 - manualRow.spacing) / 2
+        createInviteButton.widthAnchor.constraint(equalToConstant: manualButtonWidth).isActive = true
+        enterInviteButton.widthAnchor.constraint(equalToConstant: manualButtonWidth).isActive = true
+
+        let automaticButton = NSButton(
+            title: L10n.t(.automaticDiscovery),
+            target: self,
+            action: #selector(startAutomaticPairing)
+        )
+        automaticButton.bezelStyle = .rounded
+        automaticButton.controlSize = .large
+        automaticButton.bezelColor = .controlAccentColor
+        automaticButton.contentTintColor = .white
+        let automaticRow = NSStackView(views: [automaticButton])
+        automaticRow.orientation = .horizontal
+        automaticRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
+        automaticButton.widthAnchor.constraint(
+            equalToConstant: contentWidth - cardPadding * 2
+        ).isActive = true
 
         let resetButton = NSButton(
             title: L10n.t(.resetPairings),
@@ -284,19 +316,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         resetButton.contentTintColor = .systemRed
         resetButton.font = .systemFont(ofSize: 12)
 
-        let pairingRow = NSStackView()
-        pairingRow.orientation = .horizontal
-        pairingRow.alignment = .centerY
-        pairingRow.spacing = 12
-        pairingRow.edgeInsets = NSEdgeInsets(
-            top: 0,
-            left: cardPadding,
-            bottom: 0,
-            right: cardPadding
-        )
-        pairingRow.addView(pairButton, in: .leading)
-        pairingRow.addView(resetButton, in: .trailing)
-        let pairingCard = makeCard([pairingRow])
+        let resetRow = NSStackView()
+        resetRow.orientation = .horizontal
+        resetRow.alignment = .centerY
+        resetRow.edgeInsets = NSEdgeInsets(top: 0, left: cardPadding, bottom: 0, right: cardPadding)
+        resetRow.addView(NSView(), in: .leading)
+        resetRow.addView(resetButton, in: .trailing)
+        let pairingCard = makeCard([manualRow, automaticRow, resetRow], gap: 8)
 
         // 푸터: 버전 · GitHub · dongri.me
         func linkButton(_ title: String, action: Selector) -> NSButton {
@@ -482,17 +508,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         refresh()
     }
 
-    @objc private func startPairing() {
+    @objc private func startAutomaticPairing() {
         engine.beginPairingMode()
-        let alert = NSAlert()
-        alert.messageText = L10n.t(.pairNewMac)
-        alert.informativeText = L10n.t(.remotePairingChoice)
-        alert.addButton(withTitle: L10n.t(.createInvite))
-        alert.addButton(withTitle: L10n.t(.enterInvite))
-        alert.addButton(withTitle: L10n.t(.cancel))
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            guard let invite = engine.createRemotePairingInvite() else { return }
+        let started = NSAlert()
+        started.messageText = L10n.t(.searchStarted)
+        started.informativeText = L10n.t(.searchStartedBody)
+        started.runModal()
+    }
+
+    @objc private func createPairingInvite() {
+        guard let invite = engine.createRemotePairingInvite() else { return }
             pairingInviteToCopy = invite
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(invite, forType: .string)
@@ -516,8 +541,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             result.accessoryView = container
             result.addButton(withTitle: L10n.t(.approve))
             result.runModal()
-        case .alertSecondButtonReturn:
-            let input = NSAlert()
+    }
+
+    @objc private func enterPairingInvite() {
+        let input = NSAlert()
             input.messageText = L10n.t(.enterInvite)
             input.informativeText = L10n.t(.enterInviteBody)
             let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
@@ -554,9 +581,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 error.messageText = L10n.t(.invalidInvite)
                 error.runModal()
             }
-        default:
-            break
-        }
     }
 
     @objc private func copyPairingInvite() {

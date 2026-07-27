@@ -68,13 +68,14 @@ Richiede gli Xcode Command Line Tools (`xcode-select --install`).
 
 1. Avvia HangulSync su entrambi i Mac.
 2. Premi **Abbina un nuovo Mac** su **un solo Mac**.
-   Non serve premerlo su entrambi: Bonjour e Tailscale vengono cercati automaticamente.
-3. Se la ricerca automatica non riesce, seleziona **Crea invito** su uno dei due.
+   Non serve premerlo su entrambi.
+3. Seleziona **Trova automaticamente** per cercare tramite Bonjour e Tailscale.
+4. Se la ricerca non riesce, seleziona **Crea invito** su uno dei due.
    Entro due minuti incolla il codice in **Inserisci invito** sull'altro.
-4. Verifica che entrambi mostrino lo stesso codice di sei cifre,
+5. Verifica che entrambi mostrino lo stesso codice di sei cifre,
    quindi approva su entrambi.
    Lascia attivo **Considera sempre attendibile questo dispositivo** per evitare conferme future.
-5. Se macOS richiede l'accesso al Keychain di login,
+6. Se macOS richiede l'accesso al Keychain di login,
    verifica che l'app indicata sia HangulSync.
    Inserisci la password di accesso del Mac e scegli **Consenti sempre** o **Consenti**.
 

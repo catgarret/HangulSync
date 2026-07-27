@@ -3,6 +3,19 @@ import AppKit
 import Carbon
 import Network
 
+struct PeerInventory {
+    static func includingRelayFallbacks(
+        direct: [String: String],
+        trustedOrigins: Set<String>
+    ) -> [String: String] {
+        var result = direct
+        for origin in trustedOrigins where result[origin] == nil {
+            result[origin] = "relay-\(origin)"
+        }
+        return result
+    }
+}
+
 /// 입력 소스 변경 감지 → 피어 전파, 피어 메시지 수신 → 로컬 적용.
 /// 피어 경로: ① Bonjour(같은 네트워크/AWDL) ② Tailscale
 /// 기본적으로 원격 데스크탑 뷰어가 사용 중일 때만 동기화가 활성화된다.
@@ -49,6 +62,8 @@ final class SyncEngine {
     private var trustedOrigins: Set<String> = []                 // netQueue에서만 접근
     private var peerPublicKeys: [String: String] = [:]           // netQueue에서만 접근
     private var pendingApprovalOrigins: Set<String> = []         // netQueue에서만 접근
+    private var localRemoteApprovals: [String: (key: String, persist: Bool, name: String)] = [:]
+    private var remoteApprovedOrigins: Set<String> = []
     private var pairingHelloRepliedOrigins: Set<String> = []    // netQueue에서만 접근
     private var lastBonjourResults: Set<NWBrowser.Result> = []  // netQueue에서만 접근
     private var retryTimer: Timer?
@@ -124,15 +139,25 @@ final class SyncEngine {
                 self?.handle(message, fromKey: "relay-\(peerID)")
             }
         }
-        rendezvous.onPeer = { [weak self] publicKey, name in
+        rendezvous.onPeer = { [weak self] publicKey, name, remoteApproved in
             self?.netQueue.async {
-                guard let origin = SecureIdentity.deviceID(for: publicKey),
-                      origin != self?.instanceID else { return }
+                guard let self,
+                      let origin = SecureIdentity.deviceID(for: publicKey),
+                      origin != self.instanceID else { return }
                 let message = SyncMessage(
                     origin: origin, kind: .hello, name: name,
                     publicKey: publicKey, pairingRequest: true
                 )
-                self?.requestApproval(for: message, allowWithoutConnection: true)
+                if remoteApproved { self.remoteApprovedOrigins.insert(origin) }
+                if self.trustedOrigins.contains(origin) {
+                    self.rendezvous.publishApproval(
+                        publicKey: self.identity?.publicKeyBase64 ?? "",
+                        name: self.hostName
+                    )
+                } else {
+                    self.requestApproval(for: message, allowWithoutConnection: true)
+                }
+                self.finishRemoteApprovalIfReady(origin: origin)
             }
         }
         if let identity {
@@ -142,6 +167,7 @@ final class SyncEngine {
                 }
             }
         }
+        recountPeers()
         observeLocalChanges()
         observeViewerApps()
         startListener()
@@ -342,12 +368,20 @@ final class SyncEngine {
     func createRemotePairingInvite() -> String? {
         guard let publicKey = identity?.publicKeyBase64 else { return nil }
         beginPairingMode()
+        netQueue.async {
+            self.localRemoteApprovals.removeAll()
+            self.remoteApprovedOrigins.removeAll()
+        }
         return rendezvous.createInvite(publicKey: publicKey, name: hostName)
     }
 
     func joinRemotePairing(invite: String) -> Bool {
         guard let publicKey = identity?.publicKeyBase64 else { return false }
         beginPairingMode()
+        netQueue.async {
+            self.localRemoteApprovals.removeAll()
+            self.remoteApprovedOrigins.removeAll()
+        }
         return rendezvous.join(inviteText: invite, publicKey: publicKey, name: hostName)
     }
 
@@ -360,6 +394,7 @@ final class SyncEngine {
             for (key, origin) in self.originByKey where origin == id {
                 self.connections[key]?.cancel()
             }
+            self.recountPeers()
         }
     }
 
@@ -371,6 +406,7 @@ final class SyncEngine {
             self.persistTrustedPeers()
             for peerID in peerIDs { self.relay.remove(peerID: peerID) }
             for connection in self.connections.values { connection.cancel() }
+            self.recountPeers()
         }
     }
 
@@ -417,6 +453,15 @@ final class SyncEngine {
                 }
                 guard allowWithoutConnection || !matchingKeys.isEmpty else { return }
                 if approved {
+                    if allowWithoutConnection {
+                        self.localRemoteApprovals[origin] = (publicKey, persist, peerName)
+                        self.rendezvous.publishApproval(
+                            publicKey: identity.publicKeyBase64,
+                            name: self.hostName
+                        )
+                        self.finishRemoteApprovalIfReady(origin: origin)
+                        return
+                    }
                     self.trustedOrigins.insert(origin)
                     if persist {
                         self.peerPublicKeys[origin] = publicKey
@@ -443,6 +488,34 @@ final class SyncEngine {
                     }
                 }
             }
+        }
+    }
+
+    private func finishRemoteApprovalIfReady(origin: String) {
+        guard remoteApprovedOrigins.contains(origin),
+              let approval = localRemoteApprovals.removeValue(forKey: origin),
+              let identity,
+              identity.sharedSecret(with: approval.key) != nil
+        else { return }
+        remoteApprovedOrigins.remove(origin)
+        trustedOrigins.insert(origin)
+        if approval.persist {
+            peerPublicKeys[origin] = approval.key
+            persistTrustedPeers()
+        }
+        DispatchQueue.main.async {
+            self.namesByOrigin[origin] = approval.name
+        }
+        if let secret = identity.sharedSecret(with: approval.key) {
+            relay.configure(peerID: origin, sharedSecret: secret)
+        }
+        recountPeers()
+        DispatchQueue.main.async {
+            self.onStateChange?()
+            let alert = NSAlert()
+            alert.messageText = L10n.t(.pairingComplete)
+            alert.informativeText = String(format: L10n.t(.pairingCompleteBody), approval.name)
+            alert.runModal()
         }
     }
 
@@ -676,12 +749,17 @@ final class SyncEngine {
                     keyByOrigin[origin] = key
                 }
             }
+            keyByOrigin = PeerInventory.includingRelayFallbacks(
+                direct: keyByOrigin,
+                trustedOrigins: self.trustedOrigins
+            )
             DispatchQueue.main.async {
                 self.readyPeerCount = keyByOrigin.count
                 self.peerInfo = keyByOrigin.map { origin, key in
                     let name = self.namesByOrigin[origin] ?? "Mac"
                     let via: L10n.Key = key.hasPrefix("bonjour") ? .viaLocalNetwork
                         : key.hasPrefix("ts-") ? .viaTailscale
+                        : key.hasPrefix("relay-") ? .viaEncryptedRelay
                         : .viaIncoming
                     return (origin, name, L10n.t(via))
                 }.sorted { $0.name < $1.name }

@@ -10,16 +10,30 @@ enum EndToEndSmoke {
         let secondIdentity = SecureIdentity(privateKey: Curve25519.KeyAgreement.PrivateKey())
         let firstPairing = PairingRendezvous()
         let secondPairing = PairingRendezvous()
-        let pairingDone = DispatchSemaphore(value: 0)
-        var receivedSecondKey: String?
+        let firstApproved = DispatchSemaphore(value: 0)
+        let secondApproved = DispatchSemaphore(value: 0)
 
-        firstPairing.onPeer = { key, _ in
+        firstPairing.onPeer = { key, _, approved in
             guard key == secondIdentity.publicKeyBase64 else { return }
-            receivedSecondKey = key
-            pairingDone.signal()
+            if approved {
+                firstApproved.signal()
+            } else {
+                firstPairing.publishApproval(
+                    publicKey: firstIdentity.publicKeyBase64,
+                    name: "First Mac"
+                )
+            }
         }
-        secondPairing.onPeer = { key, _ in
+        secondPairing.onPeer = { key, _, approved in
             guard key == firstIdentity.publicKeyBase64 else { return }
+            if approved {
+                secondApproved.signal()
+            } else {
+                secondPairing.publishApproval(
+                    publicKey: secondIdentity.publicKeyBase64,
+                    name: "Second Mac"
+                )
+            }
         }
 
         guard let invite = firstPairing.createInvite(
@@ -32,10 +46,10 @@ enum EndToEndSmoke {
         ) else {
             fatalError("PAIRING_SETUP_FAILED")
         }
-        guard pairingDone.wait(timeout: .now() + 15) == .success,
-              receivedSecondKey == secondIdentity.publicKeyBase64
+        guard firstApproved.wait(timeout: .now() + 15) == .success,
+              secondApproved.wait(timeout: .now() + 15) == .success
         else {
-            fatalError("PAIRING_ROUND_TRIP_FAILED")
+            fatalError("MUTUAL_APPROVAL_FAILED")
         }
         firstPairing.cancel()
         secondPairing.cancel()
