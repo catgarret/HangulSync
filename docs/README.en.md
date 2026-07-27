@@ -75,8 +75,9 @@ Requires Xcode Command Line Tools (`xcode-select --install`).
 ## First pairing and Keychain prompt
 
 1. Run HangulSync on both Macs.
-2. Click **Pair New Mac** in Settings on either Mac.
-3. If the Macs use different networks, select **Create Invite** on one Mac.
+2. Click **Pair New Mac** in Settings on **only one Mac**.
+   Do not click it on both; HangulSync searches Bonjour and Tailscale automatically.
+3. If automatic discovery fails, select **Create Invite** on either Mac.
    Paste the copied invite into **Enter Invite** on the other Mac within two minutes.
 4. Confirm that both Macs show the same six-digit code, then approve on both.
    Keep **Always trust this device** enabled to skip confirmation in the future.

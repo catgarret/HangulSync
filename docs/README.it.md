@@ -67,8 +67,9 @@ Richiede gli Xcode Command Line Tools (`xcode-select --install`).
 ## Primo abbinamento e richiesta Keychain
 
 1. Avvia HangulSync su entrambi i Mac.
-2. Premi **Abbina un nuovo Mac** nelle Impostazioni di uno dei due.
-3. Se i Mac sono su reti diverse, seleziona **Crea invito** su uno.
+2. Premi **Abbina un nuovo Mac** su **un solo Mac**.
+   Non serve premerlo su entrambi: Bonjour e Tailscale vengono cercati automaticamente.
+3. Se la ricerca automatica non riesce, seleziona **Crea invito** su uno dei due.
    Entro due minuti incolla il codice in **Inserisci invito** sull'altro.
 4. Verifica che entrambi mostrino lo stesso codice di sei cifre,
    quindi approva su entrambi.
