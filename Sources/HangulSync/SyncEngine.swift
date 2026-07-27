@@ -613,6 +613,7 @@ final class SyncEngine {
             switch state {
             case .ready:
                 self.recountPeers()
+                let pairingRequested = Date() < self.pairingUntil
                 DispatchQueue.main.async {
                     // 이름 소개 (피어 목록·고유 카운트용)
                     self.push(
@@ -621,7 +622,7 @@ final class SyncEngine {
                             kind: .hello,
                             name: self.hostName,
                             publicKey: self.identity?.publicKeyBase64,
-                            pairingRequest: false
+                            pairingRequest: pairingRequested
                         ),
                         requiresTrust: false
                     )
