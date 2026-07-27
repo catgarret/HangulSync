@@ -37,6 +37,7 @@ final class SyncEngine {
     let serviceName: String
     private let identity: SecureIdentity?
     private let relay: RelayChannel
+    private let rendezvous = PairingRendezvous()
 
     private let netQueue = DispatchQueue(label: "hangulsync.network")
     private var listener: NWListener?
@@ -121,6 +122,17 @@ final class SyncEngine {
         relay.onMessage = { [weak self] message, peerID in
             self?.netQueue.async {
                 self?.handle(message, fromKey: "relay-\(peerID)")
+            }
+        }
+        rendezvous.onPeer = { [weak self] publicKey, name in
+            self?.netQueue.async {
+                guard let origin = SecureIdentity.deviceID(for: publicKey),
+                      origin != self?.instanceID else { return }
+                let message = SyncMessage(
+                    origin: origin, kind: .hello, name: name,
+                    publicKey: publicKey, pairingRequest: true
+                )
+                self?.requestApproval(for: message, allowWithoutConnection: true)
             }
         }
         if let identity {
@@ -217,11 +229,7 @@ final class SyncEngine {
                 conn.send(content: data, completion: .contentProcessed { _ in })
             }
         }
-        DispatchQueue.main.async {
-            if requiresTrust, self.readyPeerCount == 0 {
-                self.relay.publish(msg)
-            }
-        }
+        if requiresTrust { relay.publish(msg) }
     }
 
     // MARK: - 메시지 수신 (netQueue에서 호출)
@@ -323,6 +331,18 @@ final class SyncEngine {
         }
     }
 
+    func createRemotePairingInvite() -> String? {
+        guard let publicKey = identity?.publicKeyBase64 else { return nil }
+        beginPairingMode()
+        return rendezvous.createInvite(publicKey: publicKey, name: hostName)
+    }
+
+    func joinRemotePairing(invite: String) -> Bool {
+        guard let publicKey = identity?.publicKeyBase64 else { return false }
+        beginPairingMode()
+        return rendezvous.join(inviteText: invite, publicKey: publicKey, name: hostName)
+    }
+
     func forgetPeer(id: String) {
         netQueue.async {
             self.trustedOrigins.remove(id)
@@ -354,7 +374,7 @@ final class SyncEngine {
         UserDefaults.standard.set(peerPublicKeys, forKey: Self.peerPublicKeysDefaults)
     }
 
-    private func requestApproval(for message: SyncMessage) {
+    private func requestApproval(for message: SyncMessage, allowWithoutConnection: Bool = false) {
         let origin = message.origin
         guard let publicKey = message.publicKey,
               let identity,
@@ -377,17 +397,26 @@ final class SyncEngine {
             alert.alertStyle = .warning
             alert.addButton(withTitle: L10n.t(.approve))
             alert.addButton(withTitle: L10n.t(.reject))
+            let remember = NSButton(checkboxWithTitle: L10n.t(.alwaysTrustDevice), target: nil, action: nil)
+            remember.state = .on
+            alert.accessoryView = remember
             let approved = alert.runModal() == .alertFirstButtonReturn
+            let persist = remember.state == .on
             self.netQueue.async {
                 self.pendingApprovalOrigins.remove(origin)
                 let matchingKeys = self.originByKey.compactMap { connectionKey, peerOrigin in
                     peerOrigin == origin ? connectionKey : nil
                 }
-                guard !matchingKeys.isEmpty else { return }
+                guard allowWithoutConnection || !matchingKeys.isEmpty else { return }
                 if approved {
                     self.trustedOrigins.insert(origin)
-                    self.peerPublicKeys[origin] = publicKey
-                    self.persistTrustedPeers()
+                    if persist {
+                        self.peerPublicKeys[origin] = publicKey
+                        self.persistTrustedPeers()
+                    }
+                    DispatchQueue.main.async {
+                        self.namesByOrigin[origin] = peerName
+                    }
                     if let secret = identity.sharedSecret(with: publicKey) {
                         self.relay.configure(peerID: origin, sharedSecret: secret)
                     }

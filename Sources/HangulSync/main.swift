@@ -481,7 +481,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     @objc private func startPairing() {
-        engine.beginPairingMode()
+        let alert = NSAlert()
+        alert.messageText = L10n.t(.pairNewMac)
+        alert.informativeText = L10n.t(.remotePairingChoice)
+        alert.addButton(withTitle: L10n.t(.createInvite))
+        alert.addButton(withTitle: L10n.t(.enterInvite))
+        alert.addButton(withTitle: L10n.t(.nearbyPairing))
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            guard let invite = engine.createRemotePairingInvite() else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(invite, forType: .string)
+            let result = NSAlert()
+            result.messageText = L10n.t(.inviteReady)
+            result.informativeText = L10n.t(.inviteCopied)
+            let field = NSTextField(string: invite)
+            field.isEditable = false
+            field.isSelectable = true
+            field.frame = NSRect(x: 0, y: 0, width: 420, height: 24)
+            result.accessoryView = field
+            result.addButton(withTitle: L10n.t(.approve))
+            result.runModal()
+        case .alertSecondButtonReturn:
+            let input = NSAlert()
+            input.messageText = L10n.t(.enterInvite)
+            input.informativeText = L10n.t(.enterInviteBody)
+            let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
+            input.accessoryView = field
+            input.addButton(withTitle: L10n.t(.join))
+            input.addButton(withTitle: L10n.t(.cancel))
+            guard input.runModal() == .alertFirstButtonReturn else { return }
+            if !engine.joinRemotePairing(invite: field.stringValue) {
+                let error = NSAlert()
+                error.messageText = L10n.t(.invalidInvite)
+                error.runModal()
+            }
+        default:
+            engine.beginPairingMode()
+        }
     }
 
     @objc private func forgetPeer(_ sender: NSButton) {

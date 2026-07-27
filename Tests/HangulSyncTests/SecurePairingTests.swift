@@ -40,6 +40,31 @@ final class SecurePairingTests: XCTestCase {
         XCTAssertEqual(firstContent, secondContent)
         XCTAssertNotEqual(Data(hex: firstMaterial.topic), firstContent)
     }
+
+    func testRemotePairingInviteRoundTripsAndRejectsTampering() throws {
+        let identity = SecureIdentity(privateKey: Curve25519.KeyAgreement.PrivateKey())
+        let secret = Data(repeating: 0x42, count: 32)
+        let invite = PairingInvite(
+            version: 1,
+            secret: secret.base64EncodedString(),
+            publicKey: identity.publicKeyBase64,
+            name: "Test Mac"
+        )
+        let encoded = try XCTUnwrap(invite.encoded())
+        let decoded = try XCTUnwrap(PairingInvite.decode(encoded))
+
+        XCTAssertEqual(decoded.publicKey, identity.publicKeyBase64)
+        XCTAssertEqual(decoded.name, "Test Mac")
+        XCTAssertNil(PairingInvite.decode(encoded + "broken"))
+    }
+
+    func testRemotePairingSeparatesTopicAndContentKeys() {
+        let material = PairingRendezvousKeyMaterial(secret: Data(repeating: 0x23, count: 32))
+        let content = material.contentKey.withUnsafeBytes { Data($0) }
+
+        XCTAssertEqual(material.topic.count, 64)
+        XCTAssertNotEqual(Data(hex: material.topic), content)
+    }
 }
 
 private extension Data {

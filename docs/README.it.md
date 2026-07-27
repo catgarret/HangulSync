@@ -68,9 +68,12 @@ Richiede gli Xcode Command Line Tools (`xcode-select --install`).
 
 1. Avvia HangulSync su entrambi i Mac.
 2. Premi **Abbina un nuovo Mac** nelle Impostazioni di uno dei due.
-3. Verifica che entrambi mostrino lo stesso codice di sei cifre,
+3. Se i Mac sono su reti diverse, seleziona **Crea invito** su uno.
+   Entro due minuti incolla il codice in **Inserisci invito** sull'altro.
+4. Verifica che entrambi mostrino lo stesso codice di sei cifre,
    quindi approva su entrambi.
-4. Se macOS richiede l'accesso al Keychain di login,
+   Lascia attivo **Considera sempre attendibile questo dispositivo** per evitare conferme future.
+5. Se macOS richiede l'accesso al Keychain di login,
    verifica che l'app indicata sia HangulSync.
    Inserisci la password di accesso del Mac e scegli **Consenti sempre** o **Consenti**.
 

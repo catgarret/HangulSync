@@ -76,8 +76,11 @@ Requires Xcode Command Line Tools (`xcode-select --install`).
 
 1. Run HangulSync on both Macs.
 2. Click **Pair New Mac** in Settings on either Mac.
-3. Confirm that both Macs show the same six-digit code, then approve on both.
-4. If macOS requests access to the login Keychain, verify that the app is HangulSync.
+3. If the Macs use different networks, select **Create Invite** on one Mac.
+   Paste the copied invite into **Enter Invite** on the other Mac within two minutes.
+4. Confirm that both Macs show the same six-digit code, then approve on both.
+   Keep **Always trust this device** enabled to skip confirmation in the future.
+5. If macOS requests access to the login Keychain, verify that the app is HangulSync.
    Enter the current Mac login password and select **Always Allow** or **Allow**.
 
 Enter the password only in the macOS Keychain dialog, never in a HangulSync window.
