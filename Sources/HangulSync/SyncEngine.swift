@@ -318,6 +318,14 @@ final class SyncEngine {
         netQueue.async {
             self.pairingUntil = Date().addingTimeInterval(Self.pairingDuration)
             self.pairingHelloRepliedOrigins.removeAll()
+            let waitingTailscaleKeys = self.connections.compactMap { key, connection -> String? in
+                guard key.hasPrefix("ts-"), case .waiting = connection.state else { return nil }
+                return key
+            }
+            for key in waitingTailscaleKeys {
+                self.connections.removeValue(forKey: key)?.cancel()
+            }
+            self.runTailscaleDiscovery(includeOfflineMacs: true)
             self.push(
                 SyncMessage(
                     origin: self.instanceID,
@@ -544,13 +552,15 @@ final class SyncEngine {
         }
     }
 
-    private func runTailscaleDiscovery() {
+    private func runTailscaleDiscovery(includeOfflineMacs: Bool = false) {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self, let json = Self.runTailscaleStatus() else { return }
             guard let obj = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
                   let peers = obj["Peer"] as? [String: [String: Any]] else { return }
             for (_, peer) in peers {
-                guard (peer["Online"] as? Bool) == true,
+                let online = (peer["Online"] as? Bool) == true
+                let operatingSystem = (peer["OS"] as? String)?.lowercased()
+                guard (online || (includeOfflineMacs && operatingSystem == "macos")),
                       let ips = peer["TailscaleIPs"] as? [String],
                       let ip = ips.first(where: { !$0.contains(":") }) ?? ips.first else { continue }
                 let key = "ts-\(ip)"

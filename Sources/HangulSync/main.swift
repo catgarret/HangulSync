@@ -40,6 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     private let settingsItem = NSMenuItem(title: "", action: #selector(showSettings), keyEquivalent: ",")
     private let updateItem = NSMenuItem(title: "", action: #selector(openUpdate), keyEquivalent: "")
     private var updateButton: NSButton?
+    private var pairingInviteToCopy: String?
+    private weak var pairingInviteInput: NSTextField?
 
     // MARK: 설정 창
     private var settingsWindow: NSWindow?
@@ -490,6 +492,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         switch alert.runModal() {
         case .alertFirstButtonReturn:
             guard let invite = engine.createRemotePairingInvite() else { return }
+            pairingInviteToCopy = invite
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(invite, forType: .string)
             let result = NSAlert()
@@ -498,8 +501,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             let field = NSTextField(string: invite)
             field.isEditable = false
             field.isSelectable = true
-            field.frame = NSRect(x: 0, y: 0, width: 420, height: 24)
-            result.accessoryView = field
+            field.lineBreakMode = .byTruncatingMiddle
+            let copyButton = NSButton(
+                title: L10n.t(.copyInvite),
+                target: self,
+                action: #selector(copyPairingInvite)
+            )
+            let row = NSStackView(views: [field, copyButton])
+            row.orientation = .horizontal
+            row.spacing = 8
+            row.frame = NSRect(x: 0, y: 0, width: 480, height: 28)
+            field.widthAnchor.constraint(equalToConstant: 365).isActive = true
+            result.accessoryView = row
             result.addButton(withTitle: L10n.t(.approve))
             result.runModal()
         case .alertSecondButtonReturn:
@@ -507,9 +520,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             input.messageText = L10n.t(.enterInvite)
             input.informativeText = L10n.t(.enterInviteBody)
             let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
-            input.accessoryView = field
+            pairingInviteInput = field
+            field.placeholderString = L10n.t(.invitePlaceholder)
+            let menu = NSMenu()
+            let pasteMenuItem = menu.addItem(
+                withTitle: L10n.t(.pasteInvite),
+                action: #selector(pastePairingInvite),
+                keyEquivalent: ""
+            )
+            pasteMenuItem.target = self
+            field.menu = menu
+            let pasteButton = NSButton(
+                title: L10n.t(.pasteInvite),
+                target: self,
+                action: #selector(pastePairingInvite)
+            )
+            let row = NSStackView(views: [field, pasteButton])
+            row.orientation = .horizontal
+            row.spacing = 8
+            row.frame = NSRect(x: 0, y: 0, width: 480, height: 28)
+            field.widthAnchor.constraint(equalToConstant: 365).isActive = true
+            input.accessoryView = row
             input.addButton(withTitle: L10n.t(.join))
             input.addButton(withTitle: L10n.t(.cancel))
+            input.window.initialFirstResponder = field
+            DispatchQueue.main.async {
+                input.window.makeFirstResponder(field)
+            }
             guard input.runModal() == .alertFirstButtonReturn else { return }
             if !engine.joinRemotePairing(invite: field.stringValue) {
                 let error = NSAlert()
@@ -519,6 +556,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         default:
             engine.beginPairingMode()
         }
+    }
+
+    @objc private func copyPairingInvite() {
+        guard let invite = pairingInviteToCopy else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(invite, forType: .string)
+    }
+
+    @objc private func pastePairingInvite() {
+        guard let value = NSPasteboard.general.string(forType: .string) else {
+            NSSound.beep()
+            return
+        }
+        pairingInviteInput?.stringValue = value
+        pairingInviteInput?.window?.makeFirstResponder(pairingInviteInput)
     }
 
     @objc private func forgetPeer(_ sender: NSButton) {
